@@ -23,16 +23,11 @@ fn main() {
         .add_startup_system(setup.system())
         .add_startup_stage("world_spawn", SystemStage::single(world_spawn.system()))
         .add_startup_stage("snake_spawn", SystemStage::single(snake_spawn.system()))
-        .add_system(
-            snake_movement_input
-                .system()
-                .label(SnakeMovement::Input)
-                .before(SnakeMovement::Movement)
-        )
+        .add_system(snake_movement_input.system())
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(0.125))
-                .with_system(snake_movement.system()).label(SnakeMovement::Movement)
+                .with_system(snake_movement.system())
                 .with_system(tick.system())
         )
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
@@ -71,12 +66,22 @@ fn grid_positioning(
 ) {
     for (grid_position, mut transform) in query.iter_mut() {
         assert!(grid_position.in_bounds());
-        transform.translation = Vec3::new(
-            (grid_position.x as f32 - GRID_WIDTH as f32 / 2.0) * GRID_SCALE as f32 + GRID_SCALE as f32 / 2.0,
-            (grid_position.y as f32 - GRID_HEIGHT as f32 / 2.0) * GRID_SCALE as f32 + GRID_SCALE as f32 / 2.0,
-            0.0,
+        transform.translation = transform.translation.lerp(
+            grid_to_vector(grid_position),
+            match grid_position.t {
+                Some(t) => t,
+                None => 1.0,
+            },
         );
     }
+}
+
+fn grid_to_vector(grid_position: &GridPosition) -> Vec3 {
+    Vec3::new(
+        (grid_position.x as f32 - GRID_WIDTH as f32 / 2.0) * GRID_SCALE as f32 + GRID_SCALE as f32 / 2.0,
+        (grid_position.y as f32 - GRID_HEIGHT as f32 / 2.0) * GRID_SCALE as f32 + GRID_SCALE as f32 / 2.0,
+        0.0,
+    )
 }
 
 fn world_spawn(
@@ -114,7 +119,8 @@ fn snake_spawn(
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.snake.clone(),
-            sprite: Sprite::new(Vec2::new(GRID_SCALE as f32, GRID_SCALE as f32)),
+            sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.875, GRID_SCALE as f32 * 0.875)),
+            transform: Transform::from_translation(grid_to_vector(&snake_head_position)),
             ..Default::default()
         })
         .insert(snake_head_position)
@@ -215,7 +221,8 @@ impl SnakeHead {
         self.segments.push(commands
             .spawn_bundle(SpriteBundle {
                 material: materials.snake.clone(),
-                sprite: Sprite::new(Vec2::new(GRID_SCALE as f32, GRID_SCALE as f32)),
+                sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.75, GRID_SCALE as f32 * 0.75)),
+                transform: Transform::from_translation(grid_to_vector(&grid_position)),
                 ..Default::default()
             })
             .insert(SnakeSegment)
@@ -246,15 +253,16 @@ impl SnakeHead {
 
 struct SnakeSegment;
 
-#[derive(Default, Clone, Eq, PartialEq, Hash)]
+#[derive(Default, Clone)]
 struct GridPosition {
     x: u32,
     y: u32,
+    t: Option<f32>,
 }
 
 impl GridPosition {
     fn new(x: u32, y: u32) -> Self {
-        Self { x, y }
+        Self { x, y, t: Some(0.375) }
     }
     fn center() -> Self {
         Self::new(
@@ -278,16 +286,6 @@ impl Clock {
         self.ticks
     }
 }
-
-#[derive(SystemLabel, Debug, Hash, PartialEq, Eq, Clone)]
-enum SnakeMovement {
-    Input,
-    Movement,
-    Eating,
-    Growth,
-}
-
-// Materials
 
 struct Materials {
     grid_background: Handle<ColorMaterial>,
