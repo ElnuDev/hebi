@@ -22,6 +22,7 @@ const GRID_PADDING: u32 = 24;
 #[derive(SystemLabel, Debug, Hash, PartialEq, Eq, Clone)]
 enum Labels {
     Moving,
+    Respawning,
 }
 
 fn main() {
@@ -37,7 +38,7 @@ fn main() {
                 .with_system(snake_movement.system().label(Labels::Moving))
                 .with_system(snake_respawn.system().after(Labels::Moving))
                 .with_system(snake_eating.system().after(Labels::Moving))
-                .with_system(snake_collision_check.system().after(Labels::Moving))
+                .with_system(snake_collision_check.system().after(Labels::Moving).before(Labels::Respawning))
         )
         .add_system_set(
             SystemSet::new()
