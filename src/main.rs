@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::core::FixedTimestep;
+use rand::prelude::*;
 
 #[allow(unused)] mod colors;
 #[allow(unused)] mod themes;
@@ -7,10 +8,10 @@ use bevy::core::FixedTimestep;
 use themes::dracula as theme;
 
 // World width in grid cells
-const GRID_WIDTH: u32 = 29;
+const GRID_WIDTH: u32 = 11;
 
 // World height in grid cells
-const GRID_HEIGHT: u32 = 29;
+const GRID_HEIGHT: u32 = 11;
 
 // Pixel dimension of grid cell
 const GRID_SCALE: u32 = 24;
@@ -24,6 +25,7 @@ enum Labels {
 }
 
 fn main() {
+    const TICK_LENGTH: f64 = 0.125;
     App::build()
         .add_startup_system(setup.system())
         .add_startup_stage("world_spawn", SystemStage::single(world_spawn.system()))
@@ -31,10 +33,16 @@ fn main() {
         .add_system(snake_movement_input.system())
         .add_system_set(
             SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(0.125))
+                .with_run_criteria(FixedTimestep::step(TICK_LENGTH))
                 .with_system(snake_movement.system().label(Labels::Moving))
                 .with_system(snake_respawn.system().after(Labels::Moving))
+                .with_system(snake_eating.system().after(Labels::Moving))
                 .with_system(tick.system())
+        )
+        .add_system_set(
+            SystemSet::new()
+                .with_run_criteria(FixedTimestep::step(TICK_LENGTH * 32.0))
+                .with_system(food_spawn.system())
         )
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
         .insert_resource({
@@ -107,6 +115,22 @@ fn world_spawn(
         });
 }
 
+fn food_spawn(
+    mut commands: Commands,
+    materials: Res<Materials>,
+) {
+    let grid_position = GridPosition::random();
+    commands
+        .spawn_bundle(SpriteBundle {
+            material: materials.food.clone(),
+            sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.875, GRID_SCALE as f32 * 0.875)),
+            transform: Transform::from_translation(grid_to_vector(&grid_position)),
+            ..Default::default()
+        })
+        .insert(grid_position)
+        .insert(Food);
+}
+
 fn snake_respawn(
     commands: Commands,
     materials: Res<Materials>,
@@ -127,7 +151,7 @@ fn snake_spawn(
     let snake_head_position = GridPosition::center();
     let segment_direction = snake_head.direction.opposite().vec();
     for i in 1..SEGMENTS {
-        snake_head.spawn_segment(&mut commands, &materials, GridPosition::new(
+        snake_head.spawn_segment(None, &mut commands, &materials, GridPosition::new(
             ((segment_direction.x * (i as f32)) + snake_head_position.x as f32) as u32,
             ((segment_direction.y * (i as f32)) + snake_head_position.y as f32) as u32,
         ))
@@ -187,6 +211,22 @@ fn snake_movement(
     }
 }
 
+fn snake_eating(
+    mut commands: Commands,
+    mut snake_heads: Query<(&mut SnakeHead, &GridPosition)>,
+    mut foods: Query<(Entity, &GridPosition), With<Food>>,
+    materials: Res<Materials>,
+) {
+    for (mut snake_head, snake_head_grid_position) in snake_heads.iter_mut() {
+        for (food, food_position) in foods.iter() {
+            if food_position.x == snake_head_grid_position.x && food_position.y == snake_head_grid_position.y {
+                commands.entity(food).despawn();
+                snake_head.spawn_segment(Some(0), &mut commands, &materials, snake_head_grid_position.clone());
+            }
+        }
+    }
+}
+
 struct RespawnEvent;
 
 fn tick(
@@ -230,7 +270,6 @@ struct SnakeHead {
 
 struct SnakeHeads;
 
-
 impl SnakeHead {
     fn new(direction: Direction) -> Self {
         SnakeHead {
@@ -241,20 +280,26 @@ impl SnakeHead {
     }
     fn spawn_segment(
         &mut self,
+        index: Option<usize>,
         commands: &mut Commands,
         materials: &Res<Materials>,
         grid_position: GridPosition,
     ) {
-        self.segments.push(commands
-            .spawn_bundle(SpriteBundle {
-                material: materials.snake.clone(),
-                sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.75, GRID_SCALE as f32 * 0.75)),
-                transform: Transform::from_translation(grid_to_vector(&grid_position)),
-                ..Default::default()
-            })
-            .insert(SnakeSegment)
-            .insert(grid_position)
-            .id()
+        self.segments.insert(
+            match index {
+                Some(index) => index,
+                None => self.segments.len()
+            },
+            commands
+                .spawn_bundle(SpriteBundle {
+                    material: materials.snake.clone(),
+                    sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.75, GRID_SCALE as f32 * 0.75)),
+                    transform: Transform::from_translation(grid_to_vector(&grid_position)),
+                    ..Default::default()
+                })
+                .insert(SnakeSegment)
+                .insert(grid_position)
+                .id()
         );
     }
     fn update_segment_positions(
@@ -271,7 +316,10 @@ impl SnakeHead {
             new_segment_positions.push((grid_positions.get_mut(*self.segments.get(i - 1).unwrap()).unwrap()).clone());
         }
         for (i, new_segment_position) in new_segment_positions.iter().enumerate() {
-            let mut segment_position = grid_positions.get_mut(*self.segments.get(i).unwrap()).unwrap();
+            let mut segment_position = match grid_positions.get_mut(*self.segments.get(i).unwrap()) {
+                Ok(position) => position,
+                Err(_) => continue,
+            };
             segment_position.x = new_segment_position.x;
             segment_position.y = new_segment_position.y;
         }
@@ -285,6 +333,8 @@ impl SnakeHead {
 }
 
 struct SnakeSegment;
+
+struct Food;
 
 #[derive(Default, Clone)]
 struct GridPosition {
@@ -301,6 +351,12 @@ impl GridPosition {
         Self::new(
             (GRID_WIDTH as f32 / 2.0) as u32,
             (GRID_HEIGHT as f32 / 2.0) as u32,
+        )
+    }
+    fn random() -> Self {
+        Self::new(
+            (random::<f32>() * GRID_WIDTH as f32) as u32,
+            (random::<f32>() * GRID_WIDTH as f32) as u32,
         )
     }
     fn in_bounds(&self) -> bool {
