@@ -18,6 +18,7 @@
 
 ## Gameplay
 
+- [ ] Prevent food from spawning on top of snake
 - [ ] Add maps
 - [ ] Add wraparound
 - [ ] Add powerups/hazards
