@@ -36,7 +36,7 @@ fn main() {
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TICK_LENGTH))
                 .with_system(snake_movement.system().label(Labels::Moving))
-                .with_system(snake_respawn.system().after(Labels::Moving))
+                .with_system(snake_respawn.system().label(Labels::Respawning).after(Labels::Moving))
                 .with_system(snake_eating.system().after(Labels::Moving))
                 .with_system(snake_collision_check.system().after(Labels::Moving).before(Labels::Respawning))
         )
