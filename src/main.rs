@@ -220,7 +220,10 @@ fn snake_collision_check(
 ) {
     for (snake_head_entity, mut snake_head, snake_head_position) in snake_heads.iter_mut() {
         for segment in snake_head.segments.iter() {
-            let segment_position = grid_positions.get(*segment).unwrap();
+            let segment_position = match grid_positions.get(*segment) {
+                Ok(position) => position,
+                Err(_) => continue,
+            };
             if segment_position.x == snake_head_position.x && segment_position.y == snake_head_position.y {
                 snake_head.despawn(&mut commands, snake_head_entity);
                 respawn_writer.send(RespawnEvent);
