@@ -109,8 +109,22 @@ fn world_spawn(
 fn food_spawn(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    grid_positions: Query<&GridPosition>,
 ) {
-    let grid_position = GridPosition::random();
+    // Return and spawn no food if there are no available grid positions (entire grid full)
+    if grid_positions.iter().len() >= (GRID_WIDTH * GRID_HEIGHT) as usize {
+        return;
+    }
+    // This will prevent an infinite loop here:
+    let grid_position = 'outer: loop {
+        let possible_grid_position = GridPosition::random();
+        for exisiting_grid_position in grid_positions.iter() {
+            if exisiting_grid_position.x == possible_grid_position.x && exisiting_grid_position.y == possible_grid_position.y {
+                continue 'outer;
+            }
+        }
+        break possible_grid_position
+    };
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.add(Color::hex(theme::FOOD.choose(&mut rand::thread_rng()).unwrap()).unwrap().into()),

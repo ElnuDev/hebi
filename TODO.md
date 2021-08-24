@@ -18,7 +18,7 @@
 
 ## Gameplay
 
-- [ ] Prevent food from spawning on top of snake
+- [x] Prevent food from spawning on top of any already occupied grid position
 - [ ] Add maps
 - [ ] Add wraparound
 - [ ] Add powerups/hazards
