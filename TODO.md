@@ -3,6 +3,7 @@
 ## Polish
 
 - [x] Set up destroy animation (scale out, increase transparency)
+- [ ] Set up spawn animation (reverse of destroy, scale in, decrease transparency)
 - [ ] Add sound effects
 - [ ] Add music
 - [ ] Logo
@@ -19,6 +20,7 @@
 ## Gameplay
 
 - [x] Prevent food from spawning on top of any already occupied grid position
+- [ ] Add respawn delay that waits for destroy animation to finish
 - [ ] Add maps
 - [ ] Add wraparound
 - [ ] Add powerups/hazards
