@@ -2,7 +2,7 @@
 
 ## Polish
 
-- [ ] Set up destroy animation (scale out, increase transparency)
+- [x] Set up destroy animation (scale out, increase transparency)
 - [ ] Add sound effects
 - [ ] Add music
 - [ ] Logo

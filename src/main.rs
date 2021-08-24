@@ -1,3 +1,5 @@
+use core::time;
+
 use bevy::prelude::*;
 use bevy::core::FixedTimestep;
 use rand::prelude::*;
@@ -32,6 +34,7 @@ fn main() {
         .add_startup_stage("world_spawn", SystemStage::single(world_spawn.system()))
         .add_startup_stage("snake_spawn", SystemStage::single(snake_spawn.system()))
         .add_system(snake_movement_input.system())
+        .add_system(despawning.system())
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TICK_LENGTH))
@@ -61,10 +64,8 @@ fn main() {
 
 fn setup(
     mut commands: Commands,
-    materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-    commands.insert_resource(Materials::new(materials));
 }
 
 fn grid_positioning(
@@ -91,11 +92,11 @@ fn grid_to_vector(grid_position: &GridPosition) -> Vec3 {
 
 fn world_spawn(
     mut commands: Commands,
-    materials: Res<Materials>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.grid_background.clone(),
+            material: materials.add(Color::hex(theme::GRID_BACKGROUND).unwrap().into()),
             sprite: Sprite::new(
                 Vec2::new(
                     (GRID_WIDTH * GRID_SCALE) as f32,
@@ -108,12 +109,12 @@ fn world_spawn(
 
 fn food_spawn(
     mut commands: Commands,
-    materials: Res<Materials>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     let grid_position = GridPosition::random();
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.food.clone(),
+            material: materials.add(Color::hex(theme::FOOD).unwrap().into()),
             sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.875, GRID_SCALE as f32 * 0.875)),
             transform: Transform::from_translation(grid_to_vector(&grid_position)),
             ..Default::default()
@@ -124,7 +125,7 @@ fn food_spawn(
 
 fn snake_respawn(
     commands: Commands,
-    materials: Res<Materials>,
+    materials: ResMut<Assets<ColorMaterial>>,
     mut respawn_reader: EventReader<RespawnEvent>,
 ) {
     if respawn_reader.iter().next().is_some() {
@@ -134,7 +135,7 @@ fn snake_respawn(
 
 fn snake_spawn(
     mut commands: Commands,
-    materials: Res<Materials>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     const DIRECTION: Direction = Direction::Up;
     const SEGMENTS: u32 = 2;
@@ -142,14 +143,14 @@ fn snake_spawn(
     let snake_head_position = GridPosition::center();
     let segment_direction = snake_head.direction.opposite().vec();
     for i in 1..SEGMENTS {
-        snake_head.spawn_segment(None, &mut commands, &materials, GridPosition::new(
+        snake_head.spawn_segment(None, &mut commands, &mut materials, GridPosition::new(
             ((segment_direction.x * (i as f32)) + snake_head_position.x as f32) as u32,
             ((segment_direction.y * (i as f32)) + snake_head_position.y as f32) as u32,
         ))
     }
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.snake.clone(),
+            material: materials.add(Color::hex(theme::SNAKE).unwrap().into()),
             sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.875, GRID_SCALE as f32 * 0.875)),
             transform: Transform::from_translation(grid_to_vector(&snake_head_position)),
             ..Default::default()
@@ -185,6 +186,7 @@ fn snake_movement(
     mut snake_heads: Query<(Entity, &mut SnakeHead, &mut GridPosition)>,
     mut grid_positions: Query<&mut GridPosition, Without<SnakeHead>>,
     mut respawn_writer: EventWriter<RespawnEvent>,
+    time: Res<Time>,
 ) {
     for (entity, mut snake_head, mut grid_position) in snake_heads.iter_mut() {
         snake_head.direction = snake_head.next_direction;
@@ -193,7 +195,7 @@ fn snake_movement(
         let float_grid_position_x = grid_position.x as f32 + direction_vector.x;
         let float_grid_position_y = grid_position.y as f32 + direction_vector.y;
         if float_grid_position_x < 0.0 || float_grid_position_x >= GRID_WIDTH as f32 || float_grid_position_y < 0.0 || float_grid_position_y >= GRID_HEIGHT as f32 {
-            snake_head.despawn(&mut commands, entity);
+            snake_head.despawn(&mut commands, entity, &time);
             respawn_writer.send(RespawnEvent);
             continue;
         }
@@ -207,6 +209,7 @@ fn snake_collision_check(
     mut snake_heads: Query<(Entity, &SnakeHead, &GridPosition)>,
     grid_positions: Query<&GridPosition>,
     mut respawn_writer: EventWriter<RespawnEvent>,
+    time: Res<Time>
 ) {
     for (snake_head_entity, snake_head, snake_head_position) in snake_heads.iter_mut() {
         for segment in snake_head.segments.iter() {
@@ -215,7 +218,7 @@ fn snake_collision_check(
                 Err(_) => continue,
             };
             if segment_position.x == snake_head_position.x && segment_position.y == snake_head_position.y {
-                snake_head.despawn(&mut commands, snake_head_entity);
+                snake_head.despawn(&mut commands, snake_head_entity, &time);
                 respawn_writer.send(RespawnEvent);
                 break;
             } 
@@ -227,15 +230,35 @@ fn snake_eating(
     mut commands: Commands,
     mut snake_heads: Query<(&mut SnakeHead, &GridPosition)>,
     foods: Query<(Entity, &GridPosition), With<Food>>,
-    materials: Res<Materials>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    time: Res<Time>
 ) {
     for (mut snake_head, snake_head_grid_position) in snake_heads.iter_mut() {
         for (food, food_position) in foods.iter() {
             if food_position.x == snake_head_grid_position.x && food_position.y == snake_head_grid_position.y {
-                commands.entity(food).despawn();
-                snake_head.spawn_segment(Some(0), &mut commands, &materials, snake_head_grid_position.clone());
+                commands.entity(food)
+                    .remove::<Food>()
+                    .insert(Despawning(time.seconds_since_startup()));
+                snake_head.spawn_segment(Some(0), &mut commands, &mut materials, snake_head_grid_position.clone());
             }
         }
+    }
+}
+
+fn despawning(
+    mut commands: Commands,
+    mut despawning_objects: Query<(Entity, &Despawning, &mut Transform, &Handle<ColorMaterial>)>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    time: Res<Time>,
+) {
+    for (entity, despawning, mut transform, material_handle) in despawning_objects.iter_mut() {
+        if time.seconds_since_startup() - despawning.0 > 1.0 {
+            commands.entity(entity).despawn();
+            continue;
+        }
+        transform.scale *= 1.125;
+        let material = materials.get_mut(material_handle).unwrap();
+        material.color.set_a(material.color.a() / 1.5);
     }
 }
 
@@ -286,7 +309,7 @@ impl SnakeHead {
         &mut self,
         index: Option<usize>,
         commands: &mut Commands,
-        materials: &Res<Materials>,
+        materials: &mut ResMut<Assets<ColorMaterial>>,
         grid_position: GridPosition,
     ) {
         self.segments.insert(
@@ -296,7 +319,7 @@ impl SnakeHead {
             },
             commands
                 .spawn_bundle(SpriteBundle {
-                    material: materials.snake.clone(),
+                    material: materials.add(Color::hex(theme::SNAKE).unwrap().into()),
                     sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.75, GRID_SCALE as f32 * 0.75)),
                     transform: Transform::from_translation(grid_to_vector(&grid_position)),
                     ..Default::default()
@@ -328,15 +351,21 @@ impl SnakeHead {
             segment_position.y = new_segment_position.y;
         }
     }
-    fn despawn(&self, commands: &mut Commands, entity: Entity) {
+    fn despawn(&self, commands: &mut Commands, entity: Entity, time: &Res<Time>) {
         for segment in self.segments.iter() {
-            commands.entity(*segment).despawn();
+            commands.entity(*segment)
+                .remove::<SnakeSegment>()
+                .insert(Despawning(time.seconds_since_startup()));
         }
-        commands.entity(entity).despawn();
+        commands.entity(entity)
+            .remove::<SnakeHead>()
+            .insert(Despawning(time.seconds_since_startup()));
     }
 }
 
 struct SnakeSegment;
+
+struct Despawning(f64);
 
 struct Food;
 
@@ -362,21 +391,5 @@ impl GridPosition {
             (random::<f32>() * GRID_WIDTH as f32) as u32,
             (random::<f32>() * GRID_WIDTH as f32) as u32,
         )
-    }
-}
-
-struct Materials {
-    grid_background: Handle<ColorMaterial>,
-    snake: Handle<ColorMaterial>,
-    food: Handle<ColorMaterial>,
-}
-
-impl Materials {
-    fn new(mut materials: ResMut<Assets<ColorMaterial>>) -> Self {
-        Materials {
-            grid_background: materials.add(Color::hex(theme::GRID_BACKGROUND).unwrap().into()),
-            snake: materials.add(Color::hex(theme::SNAKE).unwrap().into()),
-            food: materials.add(Color::hex(theme::FOOD).unwrap().into()),
-        }
     }
 }
