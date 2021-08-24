@@ -18,6 +18,11 @@ const GRID_SCALE: u32 = 24;
 // Pixel padding outside of grid
 const GRID_PADDING: u32 = 24;
 
+#[derive(SystemLabel, Debug, Hash, PartialEq, Eq, Clone)]
+enum Labels {
+    Moving,
+}
+
 fn main() {
     App::build()
         .add_startup_system(setup.system())
@@ -27,7 +32,8 @@ fn main() {
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(0.125))
-                .with_system(snake_movement.system())
+                .with_system(snake_movement.system().label(Labels::Moving))
+                .with_system(snake_respawn.system().after(Labels::Moving))
                 .with_system(tick.system())
         )
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
@@ -48,6 +54,7 @@ fn main() {
             }
         })
         .insert_resource(ClearColor(Color::hex(theme::BACKGROUND).unwrap()))
+        .add_event::<RespawnEvent>()
         .add_plugins(DefaultPlugins)
         .run();
 }
@@ -65,7 +72,6 @@ fn grid_positioning(
     mut query: Query<(&GridPosition, &mut Transform)>,
 ) {
     for (grid_position, mut transform) in query.iter_mut() {
-        assert!(grid_position.in_bounds());
         transform.translation = transform.translation.lerp(
             grid_to_vector(grid_position),
             match grid_position.t {
@@ -101,12 +107,22 @@ fn world_spawn(
         });
 }
 
+fn snake_respawn(
+    commands: Commands,
+    materials: Res<Materials>,
+    mut respawn_reader: EventReader<RespawnEvent>,
+) {
+    if respawn_reader.iter().next().is_some() {
+        snake_spawn(commands, materials);
+    }
+}
+
 fn snake_spawn(
     mut commands: Commands,
     materials: Res<Materials>,
 ) {
     const DIRECTION: Direction = Direction::Up;
-    const SEGMENTS: u32 = 7;
+    const SEGMENTS: u32 = 2;
     let mut snake_head = SnakeHead::new(DIRECTION);
     let snake_head_position = GridPosition::center();
     let segment_direction = snake_head.direction.opposite().vec();
@@ -150,17 +166,28 @@ fn snake_movement_input(
 }
 
 fn snake_movement(
-    mut snake_heads: Query<(&mut SnakeHead, &mut GridPosition)>,
+    mut commands: Commands,
+    mut snake_heads: Query<(Entity, &mut SnakeHead, &mut GridPosition)>,
     mut grid_positions: Query<&mut GridPosition, Without<SnakeHead>>,
+    mut respawn_writer: EventWriter<RespawnEvent>,
 ) {
-    for (mut snake_head, mut grid_position) in snake_heads.iter_mut() {
+    for (entity, mut snake_head, mut grid_position) in snake_heads.iter_mut() {
         snake_head.direction = snake_head.next_direction;
         let direction_vector = snake_head.direction.vec();
         snake_head.update_segment_positions(&grid_position, &mut grid_positions);
-        grid_position.x = (grid_position.x as f32 + direction_vector.x) as u32;
-        grid_position.y = (grid_position.y as f32 + direction_vector.y) as u32;
+        let float_grid_position_x = grid_position.x as f32 + direction_vector.x;
+        let float_grid_position_y = grid_position.y as f32 + direction_vector.y;
+        if float_grid_position_x < 0.0 || float_grid_position_x >= GRID_WIDTH as f32 || float_grid_position_y < 0.0 || float_grid_position_y >= GRID_HEIGHT as f32 {
+            snake_head.despawn(&mut commands, entity);
+            respawn_writer.send(RespawnEvent);
+            continue;
+        }
+        grid_position.x = float_grid_position_x as u32;
+        grid_position.y = float_grid_position_y as u32;
     }
 }
+
+struct RespawnEvent;
 
 fn tick(
     mut clock: ResMut<Clock>
@@ -248,6 +275,12 @@ impl SnakeHead {
             segment_position.x = new_segment_position.x;
             segment_position.y = new_segment_position.y;
         }
+    }
+    fn despawn(&self, commands: &mut Commands, entity: Entity) {
+        for segment in self.segments.iter() {
+            commands.entity(*segment).despawn();
+        }
+        commands.entity(entity).despawn();
     }
 }
 
