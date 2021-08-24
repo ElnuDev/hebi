@@ -15,10 +15,10 @@ const GRID_WIDTH: u32 = 11;
 const GRID_HEIGHT: u32 = 11;
 
 // Pixel dimension of grid cell
-const GRID_SCALE: u32 = 24;
+const GRID_SCALE: u32 = 36;
 
 // Pixel padding outside of grid
-const GRID_PADDING: u32 = 24;
+const GRID_PADDING: u32 = 36;
 
 #[derive(SystemLabel, Debug, Hash, PartialEq, Eq, Clone)]
 enum Labels {
