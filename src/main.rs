@@ -25,7 +25,7 @@ enum Labels {
 }
 
 fn main() {
-    const TICK_LENGTH: f64 = 0.125;
+    const TICK_LENGTH: f64 = 0.2;
     App::build()
         .add_startup_system(setup.system())
         .add_startup_stage("world_spawn", SystemStage::single(world_spawn.system()))
@@ -37,11 +37,12 @@ fn main() {
                 .with_system(snake_movement.system().label(Labels::Moving))
                 .with_system(snake_respawn.system().after(Labels::Moving))
                 .with_system(snake_eating.system().after(Labels::Moving))
+                .with_system(snake_collision_check.system().after(Labels::Moving))
                 .with_system(tick.system())
         )
         .add_system_set(
             SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(TICK_LENGTH * 32.0))
+                .with_run_criteria(FixedTimestep::step(TICK_LENGTH * 16.0))
                 .with_system(food_spawn.system())
         )
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
@@ -181,7 +182,7 @@ fn snake_movement_input(
         } else if keyboard_input.pressed(KeyCode::Right) {
             Direction::Right
         } else {
-            snake_head.direction
+            snake_head.next_direction
         };
         if direction != snake_head.direction.opposite() {
             snake_head.next_direction = direction;
@@ -208,6 +209,24 @@ fn snake_movement(
         }
         grid_position.x = float_grid_position_x as u32;
         grid_position.y = float_grid_position_y as u32;
+    }
+}
+
+fn snake_collision_check(
+    mut commands: Commands,
+    mut snake_heads: Query<(Entity, &mut SnakeHead, &GridPosition)>,
+    grid_positions: Query<&GridPosition>,
+    mut respawn_writer: EventWriter<RespawnEvent>,
+) {
+    for (snake_head_entity, mut snake_head, snake_head_position) in snake_heads.iter_mut() {
+        for segment in snake_head.segments.iter() {
+            let segment_position = grid_positions.get(*segment).unwrap();
+            if segment_position.x == snake_head_position.x && segment_position.y == snake_head_position.y {
+                snake_head.despawn(&mut commands, snake_head_entity);
+                respawn_writer.send(RespawnEvent);
+                break;
+            } 
+        }
     }
 }
 
