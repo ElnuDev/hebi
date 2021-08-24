@@ -38,7 +38,6 @@ fn main() {
                 .with_system(snake_respawn.system().after(Labels::Moving))
                 .with_system(snake_eating.system().after(Labels::Moving))
                 .with_system(snake_collision_check.system().after(Labels::Moving))
-                .with_system(tick.system())
         )
         .add_system_set(
             SystemSet::new()
@@ -74,7 +73,6 @@ fn setup(
 ) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
     commands.insert_resource(Materials::new(materials));
-    commands.insert_resource(Clock::default());
 }
 
 fn grid_positioning(
@@ -214,11 +212,11 @@ fn snake_movement(
 
 fn snake_collision_check(
     mut commands: Commands,
-    mut snake_heads: Query<(Entity, &mut SnakeHead, &GridPosition)>,
+    mut snake_heads: Query<(Entity, &SnakeHead, &GridPosition)>,
     grid_positions: Query<&GridPosition>,
     mut respawn_writer: EventWriter<RespawnEvent>,
 ) {
-    for (snake_head_entity, mut snake_head, snake_head_position) in snake_heads.iter_mut() {
+    for (snake_head_entity, snake_head, snake_head_position) in snake_heads.iter_mut() {
         for segment in snake_head.segments.iter() {
             let segment_position = match grid_positions.get(*segment) {
                 Ok(position) => position,
@@ -236,7 +234,7 @@ fn snake_collision_check(
 fn snake_eating(
     mut commands: Commands,
     mut snake_heads: Query<(&mut SnakeHead, &GridPosition)>,
-    mut foods: Query<(Entity, &GridPosition), With<Food>>,
+    foods: Query<(Entity, &GridPosition), With<Food>>,
     materials: Res<Materials>,
 ) {
     for (mut snake_head, snake_head_grid_position) in snake_heads.iter_mut() {
@@ -250,12 +248,6 @@ fn snake_eating(
 }
 
 struct RespawnEvent;
-
-fn tick(
-    mut clock: ResMut<Clock>
-) {
-    clock.tick();
-}
 
 #[derive(PartialEq, Copy, Clone)]
 enum Direction {
@@ -289,8 +281,6 @@ struct SnakeHead {
     next_direction: Direction,
     segments: Vec<Entity>,
 }
-
-struct SnakeHeads;
 
 impl SnakeHead {
     fn new(direction: Direction) -> Self {
@@ -380,21 +370,6 @@ impl GridPosition {
             (random::<f32>() * GRID_WIDTH as f32) as u32,
             (random::<f32>() * GRID_WIDTH as f32) as u32,
         )
-    }
-    fn in_bounds(&self) -> bool {
-        self.x < GRID_WIDTH && self.y < GRID_HEIGHT
-    }
-}
-
-#[derive(Default)]
-struct Clock {
-    ticks: u32
-}
-
-impl Clock {
-    fn tick(&mut self) -> u32 {
-        self.ticks += 1;
-        self.ticks
     }
 }
 
