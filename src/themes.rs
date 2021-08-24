@@ -4,5 +4,13 @@ pub mod dracula {
 	pub const BACKGROUND: &str = colors::dracula::BACKGROUND;
 	pub const GRID_BACKGROUND: &str = colors::dracula::SELECTION;
 	pub const SNAKE: &str = colors::dracula::FOREGROUND;
-	pub const FOOD: &str = colors::dracula::PURPLE;
+	pub const FOOD: &'static [&'static str] = &[
+		colors::dracula::CYAN,
+		colors::dracula::GREEN,
+		colors::dracula::ORANGE,
+		colors::dracula::PINK,
+		colors::dracula::PURPLE,
+		colors::dracula::RED,
+		colors::dracula::YELLOW,
+	];
 }

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::core::FixedTimestep;
 use rand::prelude::*;
+use rand::seq::SliceRandom;
 
 #[allow(unused)] mod colors;
 #[allow(unused)] mod themes;
@@ -112,7 +113,7 @@ fn food_spawn(
     let grid_position = GridPosition::random();
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.add(Color::hex(theme::FOOD).unwrap().into()),
+            material: materials.add(Color::hex(theme::FOOD.choose(&mut rand::thread_rng()).unwrap()).unwrap().into()),
             sprite: Sprite::new(Vec2::new(GRID_SCALE as f32 * 0.875, GRID_SCALE as f32 * 0.875)),
             transform: Transform::from_translation(grid_to_vector(&grid_position)),
             ..Default::default()
