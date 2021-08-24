@@ -46,21 +46,12 @@ fn main() {
                 .with_system(food_spawn.system())
         )
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
-        .insert_resource({
-            let title = "Hebi".to_string();
-            let width = (GRID_WIDTH * GRID_SCALE + GRID_PADDING * 2) as f32;
-            let height = (GRID_HEIGHT * GRID_SCALE + GRID_PADDING * 2) as f32;
-            println!(
-                "Configuring window with a title of '{}', a width of {} pixels, and a height of {} pixels.",
-                title, width, height
-            );
-            WindowDescriptor {
-                title,
-                width,
-                height,
-                resizable: false,
-                ..Default::default()
-            }
+        .insert_resource(WindowDescriptor {
+            title: "Hebi".to_string(),
+            width: (GRID_WIDTH * GRID_SCALE + GRID_PADDING * 2) as f32,
+            height: (GRID_HEIGHT * GRID_SCALE + GRID_PADDING * 2) as f32,
+            resizable: false,
+            ..Default::default()
         })
         .insert_resource(ClearColor(Color::hex(theme::BACKGROUND).unwrap()))
         .add_event::<RespawnEvent>()
