@@ -265,16 +265,20 @@ fn despawning(
     time: Res<Time>,
 ) {
     for (entity, despawning, mut transform, material_handle) in despawning_objects.iter_mut() {
-        if time.seconds_since_startup() - despawning.despawn_time > 1.0 + despawning.animation_delay {
-            commands.entity(entity).despawn();
-            continue;
-        }
         if time.seconds_since_startup() - despawning.despawn_time < despawning.animation_delay {
             continue;
         }
         transform.scale *= 1.125;
         let material = materials.get_mut(material_handle).unwrap();
-        material.color.set_a(material.color.a() / 1.5);
+        let alpha = material.color.a() / 1.5;
+        material.color.set_a(alpha);
+        // Only despawn if alpha value is 0 when converted to an 8-bit color value
+        // One can't check if alpha == 0.0 since this will never happen,
+        // and using an arbitrary small value (if alpha < 0.01) isn't precise.
+        if (alpha * 255.0) as u32 == 0 {
+            commands.entity(entity).despawn();
+            continue;
+        }
     }
 }
 
