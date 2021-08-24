@@ -251,7 +251,7 @@ fn snake_eating(
             if food_position.x == snake_head_grid_position.x && food_position.y == snake_head_grid_position.y {
                 commands.entity(food)
                     .remove::<Food>()
-                    .insert(Despawning(time.seconds_since_startup()));
+                    .insert(Despawning::new(time.seconds_since_startup(), 0.0));
                 snake_head.spawn_segment(Some(0), &mut commands, &mut materials, snake_head_grid_position.clone());
             }
         }
@@ -265,8 +265,11 @@ fn despawning(
     time: Res<Time>,
 ) {
     for (entity, despawning, mut transform, material_handle) in despawning_objects.iter_mut() {
-        if time.seconds_since_startup() - despawning.0 > 1.0 {
+        if time.seconds_since_startup() - despawning.despawn_time > 1.0 + despawning.animation_delay {
             commands.entity(entity).despawn();
+            continue;
+        }
+        if time.seconds_since_startup() - despawning.despawn_time < despawning.animation_delay {
             continue;
         }
         transform.scale *= 1.125;
@@ -365,20 +368,32 @@ impl SnakeHead {
         }
     }
     fn despawn(&self, commands: &mut Commands, entity: Entity, time: &Res<Time>) {
-        for segment in self.segments.iter() {
+        for (i, segment) in self.segments.iter().enumerate() {
             commands.entity(*segment)
                 .remove::<SnakeSegment>()
-                .insert(Despawning(time.seconds_since_startup()));
+                .insert(Despawning::new(time.seconds_since_startup(), i as f64 * 0.1));
         }
         commands.entity(entity)
             .remove::<SnakeHead>()
-            .insert(Despawning(time.seconds_since_startup()));
+            .insert(Despawning::new(time.seconds_since_startup(), 0.0));
     }
 }
 
 struct SnakeSegment;
 
-struct Despawning(f64);
+struct Despawning {
+    despawn_time: f64,
+    animation_delay: f64,
+}
+
+impl Despawning {
+    fn new(despawn_time: f64, animation_delay: f64) -> Self {
+        Self {
+            despawn_time,
+            animation_delay,
+        }
+    }
+}
 
 struct Food;
 
