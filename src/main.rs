@@ -9,16 +9,13 @@ use rand::seq::SliceRandom;
 use themes::dracula as theme;
 
 // World width in grid cells
-const GRID_WIDTH: u32 = 11;
+const GRID_WIDTH: u32 = 13;
 
 // World height in grid cells
-const GRID_HEIGHT: u32 = 11;
+const GRID_HEIGHT: u32 = 13;
 
 // Pixel dimension of grid cell
 const GRID_SCALE: u32 = 36;
-
-// Pixel padding outside of grid
-const GRID_PADDING: u32 = 36;
 
 #[derive(SystemLabel, Debug, Hash, PartialEq, Eq, Clone)]
 enum Labels {
@@ -49,12 +46,12 @@ fn main() {
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
         .insert_resource(WindowDescriptor {
             title: "Hebi".to_string(),
-            width: (GRID_WIDTH * GRID_SCALE + GRID_PADDING * 2) as f32,
-            height: (GRID_HEIGHT * GRID_SCALE + GRID_PADDING * 2) as f32,
+            width: (GRID_WIDTH * GRID_SCALE) as f32,
+            height: (GRID_HEIGHT * GRID_SCALE) as f32,
             resizable: false,
             ..Default::default()
         })
-        .insert_resource(ClearColor(Color::hex(theme::BACKGROUND).unwrap()))
+        .insert_resource(ClearColor(Color::hex(theme::GRID_BACKGROUND).unwrap()))
         .insert_resource(RespawnEvent::default())
         .add_plugins(DefaultPlugins)
         .run();
@@ -62,8 +59,18 @@ fn main() {
 
 fn setup(
     mut commands: Commands,
+    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    let mut wall = |x, y| wall_spawn(&mut commands, &mut materials, GridPosition::new(x, y));
+    for x in 0..GRID_WIDTH {
+        wall(x, 0);
+        wall(x, GRID_HEIGHT - 1);
+    }
+    for y in 1..GRID_HEIGHT - 1 {
+        wall(0, y);
+        wall(GRID_WIDTH - 1, y);
+    }
 }
 
 fn grid_positioning(
@@ -133,6 +140,22 @@ fn food_spawn(
         })
         .insert(grid_position)
         .insert(Food);
+}
+
+fn wall_spawn(
+    commands: &mut Commands,
+    materials: &mut ResMut<Assets<ColorMaterial>>,
+    grid_position: GridPosition
+) {
+    commands
+        .spawn_bundle(SpriteBundle {
+            material: materials.add(Color::hex(theme::BACKGROUND).unwrap().into()),
+            sprite: Sprite::new(Vec2::new(GRID_SCALE as f32, GRID_SCALE as f32)),
+            transform: Transform::from_translation(grid_to_vector(&grid_position)),
+            ..Default::default()
+        })
+        .insert(grid_position)
+        .insert(Collidable);
 }
 
 fn snake_respawn(
@@ -208,10 +231,12 @@ fn snake_movement(
     }
 }
 
+struct Collidable;
+
 fn snake_collision_check(
     mut commands: Commands,
     mut snake_heads: Query<(Entity, &SnakeHead, &GridPosition)>,
-    grid_positions: Query<&GridPosition>,
+    grid_positions: Query<&GridPosition, With<Collidable>>,
     time: Res<Time>,
     mut respawn_event: ResMut<RespawnEvent>,
 ) {
@@ -232,6 +257,11 @@ fn snake_collision_check(
             if snake_head_position.x == segment_position.x && snake_head_position.y == segment_position.y {
                 despawn();
             } 
+        }
+        for grid_position in grid_positions.iter() {
+            if snake_head_position.x == grid_position.x && snake_head_position.y == grid_position.y {
+                despawn();
+            }
         }
     }
 }
@@ -347,6 +377,7 @@ impl SnakeHead {
                 })
                 .insert(SnakeSegment)
                 .insert(grid_position)
+                .insert(Collidable)
                 .id()
         );
     }
