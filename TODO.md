@@ -20,7 +20,7 @@
 ## Gameplay
 
 - [x] Prevent food from spawning on top of any already occupied grid position
-- [ ] Add respawn delay that waits for destroy animation to finish
+- [x] Add respawn delay that waits for destroy animation to finish
 - [ ] Add maps
 - [ ] Add wraparound
 - [ ] Add powerups/hazards

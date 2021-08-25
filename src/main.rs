@@ -31,16 +31,15 @@ fn main() {
     App::build()
         .add_startup_system(setup.system())
         .add_startup_stage("world_spawn", SystemStage::single(world_spawn.system()))
-        .add_startup_stage("snake_spawn", SystemStage::single(snake_spawn.system()))
         .add_system(snake_movement_input.system())
-        .add_system(despawning.system())
+        .add_system(despawning.system().before(Labels::Moving))
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(TICK_LENGTH))
                 .with_system(snake_movement.system().label(Labels::Moving))
                 .with_system(snake_respawn.system().label(Labels::Respawning).after(Labels::Moving))
                 .with_system(snake_eating.system().after(Labels::Moving))
-                .with_system(snake_collision_check.system().after(Labels::Moving).before(Labels::Respawning))
+                .with_system(snake_collision_check.system().after(Labels::Moving))
         )
         .add_system_set(
             SystemSet::new()
@@ -56,7 +55,7 @@ fn main() {
             ..Default::default()
         })
         .insert_resource(ClearColor(Color::hex(theme::BACKGROUND).unwrap()))
-        .add_event::<RespawnEvent>()
+        .insert_resource(RespawnEvent::default())
         .add_plugins(DefaultPlugins)
         .run();
 }
@@ -139,10 +138,12 @@ fn food_spawn(
 fn snake_respawn(
     commands: Commands,
     materials: ResMut<Assets<ColorMaterial>>,
-    mut respawn_reader: EventReader<RespawnEvent>,
+    mut respawn: ResMut<RespawnEvent>,
+    time: Res<Time>,
 ) {
-    if respawn_reader.iter().next().is_some() {
+    if respawn.time <= time.seconds_since_startup() && !respawn.completed {
         snake_spawn(commands, materials);
+        respawn.completed = true;
     }
 }
 
@@ -195,25 +196,15 @@ fn snake_movement_input(
 }
 
 fn snake_movement(
-    mut commands: Commands,
-    mut snake_heads: Query<(Entity, &mut SnakeHead, &mut GridPosition)>,
+    mut snake_heads: Query<(&mut SnakeHead, &mut GridPosition)>,
     mut grid_positions: Query<&mut GridPosition, Without<SnakeHead>>,
-    mut respawn_writer: EventWriter<RespawnEvent>,
-    time: Res<Time>,
 ) {
-    for (entity, mut snake_head, mut grid_position) in snake_heads.iter_mut() {
+    for (mut snake_head, mut grid_position) in snake_heads.iter_mut() {
         snake_head.direction = snake_head.next_direction;
         let direction_vector = snake_head.direction.vec();
         snake_head.update_segment_positions(&grid_position, &mut grid_positions);
-        let float_grid_position_x = grid_position.x as f32 + direction_vector.x;
-        let float_grid_position_y = grid_position.y as f32 + direction_vector.y;
-        if float_grid_position_x < 0.0 || float_grid_position_x >= GRID_WIDTH as f32 || float_grid_position_y < 0.0 || float_grid_position_y >= GRID_HEIGHT as f32 {
-            snake_head.despawn(&mut commands, entity, &time);
-            respawn_writer.send(RespawnEvent);
-            continue;
-        }
-        grid_position.x = float_grid_position_x as u32;
-        grid_position.y = float_grid_position_y as u32;
+        grid_position.x = (grid_position.x as f32 + direction_vector.x) as u32;
+        grid_position.y = (grid_position.y as f32 + direction_vector.y) as u32;
     }
 }
 
@@ -221,19 +212,25 @@ fn snake_collision_check(
     mut commands: Commands,
     mut snake_heads: Query<(Entity, &SnakeHead, &GridPosition)>,
     grid_positions: Query<&GridPosition>,
-    mut respawn_writer: EventWriter<RespawnEvent>,
-    time: Res<Time>
+    time: Res<Time>,
+    mut respawn_event: ResMut<RespawnEvent>,
 ) {
     for (snake_head_entity, snake_head, snake_head_position) in snake_heads.iter_mut() {
+        let mut despawn = || {
+            snake_head.despawn(&mut commands, snake_head_entity, &time, &mut respawn_event);
+        };
+        // It is unnecessary to check if the x- or y-positions are less than 0
+        // since this is impossible for the unsigned integers that they are stored in
+        if snake_head_position.x >= GRID_WIDTH || snake_head_position.y >= GRID_HEIGHT {
+            despawn();
+        }
         for segment in snake_head.segments.iter() {
             let segment_position = match grid_positions.get(*segment) {
                 Ok(position) => position,
                 Err(_) => continue,
             };
-            if segment_position.x == snake_head_position.x && segment_position.y == snake_head_position.y {
-                snake_head.despawn(&mut commands, snake_head_entity, &time);
-                respawn_writer.send(RespawnEvent);
-                break;
+            if snake_head_position.x == segment_position.x && snake_head_position.y == segment_position.y {
+                despawn();
             } 
         }
     }
@@ -282,7 +279,11 @@ fn despawning(
     }
 }
 
-struct RespawnEvent;
+#[derive(Default)]
+struct RespawnEvent {
+    time: f64,
+    completed: bool,
+}
 
 #[derive(PartialEq, Copy, Clone)]
 enum Direction {
@@ -371,15 +372,19 @@ impl SnakeHead {
             segment_position.y = new_segment_position.y;
         }
     }
-    fn despawn(&self, commands: &mut Commands, entity: Entity, time: &Res<Time>) {
+    fn despawn(&self, commands: &mut Commands, entity: Entity, time: &Res<Time>, respawn_event: &mut ResMut<RespawnEvent>) {
+        const SEGMENT_DESPAWN_INTERVAL: f64 = 0.1;
+        const RESPAWN_DELAY: f64 = 0.5;
         for (i, segment) in self.segments.iter().enumerate() {
             commands.entity(*segment)
                 .remove::<SnakeSegment>()
-                .insert(Despawning::new(time.seconds_since_startup(), i as f64 * 0.1));
+                .insert(Despawning::new(time.seconds_since_startup(), i as f64 * SEGMENT_DESPAWN_INTERVAL));
         }
         commands.entity(entity)
             .remove::<SnakeHead>()
             .insert(Despawning::new(time.seconds_since_startup(), 0.0));
+        respawn_event.time = time.seconds_since_startup() + SEGMENT_DESPAWN_INTERVAL * self.segments.len() as f64 + RESPAWN_DELAY;
+        respawn_event.completed = false;
     }
 }
 
