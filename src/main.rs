@@ -9,7 +9,7 @@ use rand::seq::SliceRandom;
 use themes::dracula as theme;
 
 // World width in grid cells
-const GRID_WIDTH: u32 = 13;
+const GRID_WIDTH: u32 = 17;
 
 // World height in grid cells
 const GRID_HEIGHT: u32 = 13;
@@ -71,6 +71,30 @@ fn setup(
         wall(0, y);
         wall(GRID_WIDTH - 1, y);
     }
+
+    // Bottom-left wall block
+    wall(2, 2);
+    wall(3, 2);
+    wall(2, 3);
+    wall(3, 3);
+
+    // Top-left wall block
+    wall(2, GRID_HEIGHT - 4);
+    wall(3, GRID_HEIGHT - 4);
+    wall(2, GRID_HEIGHT - 3);
+    wall(3, GRID_HEIGHT - 3);
+
+    // Bottom-right wall block
+    wall(GRID_WIDTH - 4, 2);
+    wall(GRID_WIDTH - 3, 2);
+    wall(GRID_WIDTH - 4, 3);
+    wall(GRID_WIDTH - 3, 3);
+
+    // Top-right wall block
+    wall(GRID_WIDTH - 4, GRID_HEIGHT - 4);
+    wall(GRID_WIDTH - 3, GRID_HEIGHT - 4);
+    wall(GRID_WIDTH - 4, GRID_HEIGHT - 3);
+    wall(GRID_WIDTH - 3, GRID_HEIGHT - 3);
 }
 
 fn grid_positioning(
