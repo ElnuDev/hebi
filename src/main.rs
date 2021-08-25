@@ -17,6 +17,8 @@ const GRID_HEIGHT: u32 = 13;
 // Pixel dimension of grid cell
 const GRID_SCALE: u32 = 36;
 
+const TITLE: &str = "Hebi";
+
 #[derive(SystemLabel, Debug, Hash, PartialEq, Eq, Clone)]
 enum Labels {
     Moving,
@@ -45,7 +47,7 @@ fn main() {
         )
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
         .insert_resource(WindowDescriptor {
-            title: "Hebi".to_string(),
+            title: TITLE.to_string(),
             width: (GRID_WIDTH * GRID_SCALE) as f32,
             height: (GRID_HEIGHT * GRID_SCALE) as f32,
             resizable: false,
@@ -187,27 +189,30 @@ fn snake_respawn(
     materials: ResMut<Assets<ColorMaterial>>,
     mut respawn: ResMut<RespawnEvent>,
     time: Res<Time>,
+    windows: ResMut<Windows>,
 ) {
     if respawn.time <= time.seconds_since_startup() && !respawn.completed {
-        snake_spawn(commands, materials);
+        snake_spawn(commands, materials, windows);
         respawn.completed = true;
     }
 }
 
+const SPAWN_SNAKE_SEGMENTS: u32 = 2;
+
 fn snake_spawn(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut windows: ResMut<Windows>,
 ) {
     const DIRECTION: Direction = Direction::Up;
-    const SEGMENTS: u32 = 2;
     let mut snake_head = SnakeHead::new(DIRECTION);
     let snake_head_position = GridPosition::center();
     let segment_direction = snake_head.direction.opposite().vec();
-    for i in 1..SEGMENTS {
+    for i in 1..SPAWN_SNAKE_SEGMENTS {
         snake_head.spawn_segment(None, &mut commands, &mut materials, GridPosition::new(
             ((segment_direction.x * (i as f32)) + snake_head_position.x as f32) as u32,
             ((segment_direction.y * (i as f32)) + snake_head_position.y as f32) as u32,
-        ))
+        ), &mut windows)
     }
     commands
         .spawn_bundle(SpriteBundle {
@@ -295,7 +300,8 @@ fn snake_eating(
     mut snake_heads: Query<(&mut SnakeHead, &GridPosition)>,
     foods: Query<(Entity, &GridPosition), With<Food>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    time: Res<Time>
+    time: Res<Time>,
+    mut windows: ResMut<Windows>,
 ) {
     for (mut snake_head, snake_head_grid_position) in snake_heads.iter_mut() {
         for (food, food_position) in foods.iter() {
@@ -303,7 +309,7 @@ fn snake_eating(
                 commands.entity(food)
                     .remove::<Food>()
                     .insert(Despawning::new(time.seconds_since_startup(), 0.0));
-                snake_head.spawn_segment(Some(0), &mut commands, &mut materials, snake_head_grid_position.clone());
+                snake_head.spawn_segment(Some(0), &mut commands, &mut materials, snake_head_grid_position.clone(), &mut windows);
             }
         }
     }
@@ -386,6 +392,7 @@ impl SnakeHead {
         commands: &mut Commands,
         materials: &mut ResMut<Assets<ColorMaterial>>,
         grid_position: GridPosition,
+        windows: &mut ResMut<Windows>
     ) {
         self.segments.insert(
             match index {
@@ -404,6 +411,16 @@ impl SnakeHead {
                 .insert(Collidable)
                 .id()
         );
+        windows
+            .get_primary_mut()
+            .unwrap()
+            .set_title(
+                format!(
+                    "{} — Score: {}",
+                    TITLE,
+                    self.segments.len() as u32 + 1 - SPAWN_SNAKE_SEGMENTS
+                )
+            );
     }
     fn update_segment_positions(
         &mut self,
