@@ -553,7 +553,7 @@ impl GridPosition {
     fn random() -> Self {
         Self::new(
             (random::<f32>() * GRID_WIDTH as f32) as u32,
-            (random::<f32>() * GRID_WIDTH as f32) as u32,
+            (random::<f32>() * GRID_HEIGHT as f32) as u32,
         )
     }
 }
