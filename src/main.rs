@@ -99,6 +99,36 @@ fn setup(
     wall(GRID_WIDTH - 3, GRID_HEIGHT - 4);
     wall(GRID_WIDTH - 4, GRID_HEIGHT - 3);
     wall(GRID_WIDTH - 3, GRID_HEIGHT - 3);
+
+    let mut spawn_positions = SpawnPositions::default();
+    let mut spawn = |x, y, direction| {
+        spawn_positions
+            .spawn_positions
+            .push(
+                SpawnPosition::new(
+                    GridPosition::new(x, y),
+                    direction
+                )
+            );
+    };
+    
+    // Bottom-left spawn
+    spawn(5, 5, Direction::Right);
+    spawn(5, 5, Direction::Up);
+
+    // Top-left spawn
+    spawn(5, GRID_HEIGHT - 6, Direction::Right);
+    spawn(5, GRID_HEIGHT - 6, Direction::Down);
+
+    // Bottom-right spaw
+    spawn(GRID_WIDTH - 6, 5, Direction::Left);
+    spawn(GRID_WIDTH - 6, 5, Direction::Up);
+
+    // Top-right spawn
+    spawn(GRID_WIDTH - 6, GRID_HEIGHT - 6, Direction::Left);
+    spawn(GRID_WIDTH - 6, GRID_HEIGHT - 6, Direction::Down);
+
+    commands.insert_resource(spawn_positions);
 }
 
 fn grid_positioning(
@@ -192,9 +222,10 @@ fn snake_respawn(
     mut respawn: ResMut<RespawnEvent>,
     time: Res<Time>,
     windows: ResMut<Windows>,
+    spawn_positions: Res<SpawnPositions>,
 ) {
     if respawn.time <= time.seconds_since_startup() && !respawn.completed {
-        snake_spawn(commands, materials, windows);
+        snake_spawn(commands, materials, windows, spawn_positions);
         respawn.completed = true;
     }
 }
@@ -205,10 +236,11 @@ fn snake_spawn(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut windows: ResMut<Windows>,
+    spawn_positions: Res<SpawnPositions>,
 ) {
-    const DIRECTION: Direction = Direction::Up;
-    let mut snake_head = SnakeHead::new(DIRECTION);
-    let snake_head_position = GridPosition::center();
+    let spawn_position = spawn_positions.spawn_positions.choose(&mut rand::thread_rng()).unwrap();
+    let mut snake_head = SnakeHead::new(spawn_position.direction);
+    let snake_head_position = spawn_position.grid_position.clone();
     let segment_direction = snake_head.direction.opposite().vec();
     for i in 1..SPAWN_SNAKE_SEGMENTS {
         snake_head.spawn_segment(None, &mut commands, &mut materials, GridPosition::new(
@@ -491,16 +523,29 @@ impl GridPosition {
     fn new(x: u32, y: u32) -> Self {
         Self { x, y, t: Some(0.375) }
     }
-    fn center() -> Self {
-        Self::new(
-            (GRID_WIDTH as f32 / 2.0) as u32,
-            (GRID_HEIGHT as f32 / 2.0) as u32,
-        )
-    }
     fn random() -> Self {
         Self::new(
             (random::<f32>() * GRID_WIDTH as f32) as u32,
             (random::<f32>() * GRID_WIDTH as f32) as u32,
         )
     }
+}
+
+struct SpawnPosition {
+    grid_position: GridPosition,
+    direction: Direction,
+}
+
+impl SpawnPosition {
+    fn new(grid_position: GridPosition, direction: Direction) -> Self {
+        SpawnPosition {
+            grid_position,
+            direction,
+        }
+    }
+}
+
+#[derive(Default)]
+struct SpawnPositions {
+    spawn_positions: Vec<SpawnPosition>,
 }
