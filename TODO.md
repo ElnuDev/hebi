@@ -4,7 +4,7 @@
 
 - [x] Set up destroy animation (scale out, increase transparency)
 - [ ] Set up spawn animation (reverse of destroy, scale in, decrease transparency)
-- [ ] Add sound effects
+- [x] Add sound effects
 - [ ] Add music
 - [ ] Logo
 
