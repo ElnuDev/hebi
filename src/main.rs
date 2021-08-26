@@ -194,7 +194,6 @@ fn food_spawn(
         }
         break possible_grid_position
     };
-    println!("{}, {}", grid_position.x, grid_position.y);
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.add(Color::hex(theme::FOOD.choose(&mut rand::thread_rng()).unwrap()).unwrap().into()),
