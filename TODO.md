@@ -34,7 +34,7 @@
 - [ ] Add segment (and head) rotation.
 	This would make it possible to have non square/circular segments.
 - [x] Choose a license (GPLv3)
-- [ ] Get Windows builds working
+- [x] Get Windows builds working (this was never an issue, just they don't work on a VM)
 
 ## Networking
 
