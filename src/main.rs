@@ -140,10 +140,7 @@ fn grid_positioning(
     for (grid_position, mut transform) in query.iter_mut() {
         transform.translation = transform.translation.lerp(
             grid_to_vector(grid_position),
-            match grid_position.t {
-                Some(t) => t,
-                None => 1.0,
-            },
+            grid_position.t.unwrap_or(1.0),
         );
     }
 }
@@ -437,7 +434,7 @@ struct SnakeHead {
 impl SnakeHead {
     fn new(direction: Direction) -> Self {
         SnakeHead {
-            direction: direction,
+            direction,
             next_direction: direction,
             segments: Vec::new(),
         }
