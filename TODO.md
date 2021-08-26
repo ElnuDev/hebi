@@ -33,7 +33,7 @@
 
 - [ ] Add segment (and head) rotation.
 	This would make it possible to have non square/circular segments.
-- [ ] Choose a license (GPLv3?)
+- [x] Choose a license (GPLv3)
 - [ ] Get Windows builds working
 
 ## Networking
