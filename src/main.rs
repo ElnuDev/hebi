@@ -64,7 +64,10 @@ fn main() {
 fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
+    commands.insert_resource(AudioAssets::new(&asset_server));
+    
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
     let mut wall = |x, y| wall_spawn(&mut commands, &mut materials, GridPosition::new(x, y));
     for x in 0..GRID_WIDTH {
@@ -174,6 +177,8 @@ fn food_spawn(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     grid_positions: Query<&GridPosition>,
+    audio: Res<Audio>,
+    audio_assets: Res<AudioAssets>,
 ) {
     // Return and spawn no food if there are no available grid positions (entire grid full)
     if grid_positions.iter().len() >= (GRID_WIDTH * GRID_HEIGHT) as usize {
@@ -189,6 +194,7 @@ fn food_spawn(
         }
         break possible_grid_position
     };
+    println!("{}, {}", grid_position.x, grid_position.y);
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.add(Color::hex(theme::FOOD.choose(&mut rand::thread_rng()).unwrap()).unwrap().into()),
@@ -198,6 +204,7 @@ fn food_spawn(
         })
         .insert(grid_position)
         .insert(Food);
+    audio.play(audio_assets.spawn_food.clone_weak());
 }
 
 fn wall_spawn(
@@ -223,9 +230,11 @@ fn snake_respawn(
     time: Res<Time>,
     windows: ResMut<Windows>,
     spawn_positions: Res<SpawnPositions>,
+    audio: Res<Audio>,
+    audio_assets: Res<AudioAssets>,
 ) {
     if respawn.time <= time.seconds_since_startup() && !respawn.completed {
-        snake_spawn(commands, materials, windows, spawn_positions);
+        snake_spawn(commands, materials, windows, spawn_positions, audio, audio_assets);
         respawn.completed = true;
     }
 }
@@ -237,6 +246,8 @@ fn snake_spawn(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut windows: ResMut<Windows>,
     spawn_positions: Res<SpawnPositions>,
+    audio: Res<Audio>,
+    audio_assets: Res<AudioAssets>,
 ) {
     let spawn_position = spawn_positions.spawn_positions.choose(&mut rand::thread_rng()).unwrap();
     let mut snake_head = SnakeHead::new(spawn_position.direction);
@@ -257,6 +268,7 @@ fn snake_spawn(
         })
         .insert(snake_head_position)
         .insert(snake_head);
+    audio.play(audio_assets.spawn_snake.clone_weak());
 }
 
 fn snake_movement_input(
@@ -302,10 +314,11 @@ fn snake_collision_check(
     grid_positions: Query<&GridPosition, With<Collidable>>,
     time: Res<Time>,
     mut respawn_event: ResMut<RespawnEvent>,
+    audio_assets: Res<AudioAssets>,
 ) {
     for (snake_head_entity, snake_head, snake_head_position) in snake_heads.iter_mut() {
         let mut despawn = || {
-            snake_head.despawn(&mut commands, snake_head_entity, &time, &mut respawn_event);
+            snake_head.despawn(&mut commands, snake_head_entity, &time, &mut respawn_event, &audio_assets);
         };
         // It is unnecessary to check if the x- or y-positions are less than 0
         // since this is impossible for the unsigned integers that they are stored in
@@ -336,13 +349,14 @@ fn snake_eating(
     mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
     mut windows: ResMut<Windows>,
+    audio_assets: Res<AudioAssets>,
 ) {
     for (mut snake_head, snake_head_grid_position) in snake_heads.iter_mut() {
         for (food, food_position) in foods.iter() {
             if food_position.x == snake_head_grid_position.x && food_position.y == snake_head_grid_position.y {
                 commands.entity(food)
                     .remove::<Food>()
-                    .insert(Despawning::new(time.seconds_since_startup(), 0.0));
+                    .insert(Despawning::new(time.seconds_since_startup(), 0.0, Some(audio_assets.eat.clone_weak())));
                 snake_head.spawn_segment(Some(0), &mut commands, &mut materials, snake_head_grid_position.clone(), &mut windows);
             }
         }
@@ -351,13 +365,22 @@ fn snake_eating(
 
 fn despawning(
     mut commands: Commands,
-    mut despawning_objects: Query<(Entity, &Despawning, &mut Transform, &Handle<ColorMaterial>)>,
+    mut despawning_objects: Query<(Entity, &mut Despawning, &mut Transform, &Handle<ColorMaterial>)>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
+    audio: Res<Audio>,
 ) {
-    for (entity, despawning, mut transform, material_handle) in despawning_objects.iter_mut() {
+    for (entity, mut despawning, mut transform, material_handle) in despawning_objects.iter_mut() {
         if time.seconds_since_startup() - despawning.despawn_time < despawning.animation_delay {
             continue;
+        }
+        if !despawning.started {
+            despawning.started = true;
+            if despawning.sound.is_some() {
+                if let Some(sound) = despawning.sound.take() {
+                    audio.play(sound);
+                }
+            }
         }
         transform.scale *= 1.125;
         let material = materials.get_mut(material_handle).unwrap();
@@ -478,17 +501,17 @@ impl SnakeHead {
             segment_position.y = new_segment_position.y;
         }
     }
-    fn despawn(&self, commands: &mut Commands, entity: Entity, time: &Res<Time>, respawn_event: &mut ResMut<RespawnEvent>) {
+    fn despawn(&self, commands: &mut Commands, entity: Entity, time: &Res<Time>, respawn_event: &mut ResMut<RespawnEvent>, audio_assets: &Res<AudioAssets>) {
         const SEGMENT_DESPAWN_INTERVAL: f64 = 0.1;
         const RESPAWN_DELAY: f64 = 0.5;
         for (i, segment) in self.segments.iter().enumerate() {
             commands.entity(*segment)
                 .remove::<SnakeSegment>()
-                .insert(Despawning::new(time.seconds_since_startup(), i as f64 * SEGMENT_DESPAWN_INTERVAL));
+                .insert(Despawning::new(time.seconds_since_startup(), (i + 1) as f64 * SEGMENT_DESPAWN_INTERVAL, Some(audio_assets.destroy.clone_weak())));
         }
         commands.entity(entity)
             .remove::<SnakeHead>()
-            .insert(Despawning::new(time.seconds_since_startup(), 0.0));
+            .insert(Despawning::new(time.seconds_since_startup(), 0.0, Some(audio_assets.destroy.clone_weak())));
         respawn_event.time = time.seconds_since_startup() + SEGMENT_DESPAWN_INTERVAL * self.segments.len() as f64 + RESPAWN_DELAY;
         respawn_event.completed = false;
     }
@@ -499,13 +522,17 @@ struct SnakeSegment;
 struct Despawning {
     despawn_time: f64,
     animation_delay: f64,
+    sound: Option<Handle<AudioSource>>,
+    started: bool,
 }
 
 impl Despawning {
-    fn new(despawn_time: f64, animation_delay: f64) -> Self {
+    fn new(despawn_time: f64, animation_delay: f64, sound: Option<Handle<AudioSource>>) -> Self {
         Self {
             despawn_time,
             animation_delay,
+            sound,
+            started: false,
         }
     }
 }
@@ -548,4 +575,23 @@ impl SpawnPosition {
 #[derive(Default)]
 struct SpawnPositions {
     spawn_positions: Vec<SpawnPosition>,
+}
+
+struct AudioAssets {
+    destroy: Handle<AudioSource>,
+    eat: Handle<AudioSource>,
+    spawn_food: Handle<AudioSource>,
+    spawn_snake: Handle<AudioSource>,
+}
+ 
+impl AudioAssets {
+    fn new(asset_server: &AssetServer) -> Self {
+        let load = |name: &str| asset_server.load(format!("sounds/{}.mp3", name).as_str());
+        AudioAssets {
+            destroy: load("destroy"),
+            eat: load("eat"),
+            spawn_food: load("spawn_food"),
+            spawn_snake: load("spawn_snake"),
+        }
+    }
 }
