@@ -1,0 +1,38 @@
+# Solarized Dark Theme for Hebi
+# Website:    https://ethanschoonover.com/solarized
+# Repository: https://github.com/altercation/solarized
+
+# Solarized Dark Base 03
+walls = "002b36"
+
+# Solarized Dark Base 02
+background = "073642"
+
+# Solarized Dark Base 2
+snake = "eee8d5"
+
+food = [
+    # Solarized Dark Yellow
+    "b58900",
+
+    # Solarized Dark Orange
+    "cb4b16",
+
+    # Solarized Dark Red
+    "dc322f",
+
+    # Solarized Dark Magenta
+    "d33682",
+
+    # Solarized Dark Violet
+    "6c71c4",
+
+    # Solarized Dark Blue
+    "268bd2",
+
+    # Solarized Dark Cyan
+    "2aa198",
+
+    # Solarized Dark Green
+    "859900"
+]

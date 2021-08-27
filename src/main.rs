@@ -4,22 +4,9 @@ use bevy::core::FixedTimestep;
 use bevy::prelude::*;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
-
-#[allow(unused)]
-mod colors;
-#[allow(unused)]
-mod themes;
-
-use themes::dracula as theme;
-
-// World width in grid cells
-const GRID_WIDTH: u32 = 17;
-
-// World height in grid cells
-const GRID_HEIGHT: u32 = 13;
-
-// Pixel dimension of grid cell
-const GRID_SCALE: u32 = 36;
+use serde::Deserialize;
+use std::fs;
+use toml;
 
 const TITLE: &str = "Hebi";
 
@@ -29,16 +16,80 @@ enum Labels {
     Respawning,
 }
 
+#[derive(Deserialize)]
+struct Config {
+    visuals: ConfigVisuals,
+    game: ConfigGame,
+    audio: ConfigAudio,
+}
+
+#[derive(Deserialize)]
+struct ConfigVisuals {
+    theme: String,
+    scale: u32,
+}
+
+#[derive(Deserialize)]
+struct ConfigGame {
+    grid: ConfigGameGrid,
+    tick: ConfigGameTick,
+    snake: ConfigGameSnake,
+}
+
+#[derive(Deserialize)]
+struct ConfigGameGrid {
+    width: u32,
+    height: u32,
+    corner_walls: bool,
+}
+
+#[derive(Deserialize)]
+struct ConfigGameTick {
+    length: f64,
+    food: u32,
+}
+
+#[derive(Deserialize)]
+struct ConfigGameSnake {
+    segments: u32,
+    segment_despawn_interval: f64,
+    respawn_delay: f64,
+}
+
+#[derive(Deserialize)]
+struct ConfigAudio {
+    eat: String,
+    destroy: String,
+    spawn_food: String,
+    spawn_snake: String,
+}
+
+#[derive(Deserialize)]
+struct Theme {
+    walls: String,
+    background: String,
+    snake: String,
+    food: Vec<String>,
+}
+
 fn main() {
-    const TICK_LENGTH: f64 = 0.2;
+    let config: Config = toml::from_str(
+        &fs::read_to_string("config.toml").expect("Something went wrong reading the config file!"),
+    )
+    .expect("Something went wrong parsing the config file!");
+    let theme: Theme = toml::from_str(
+        &fs::read_to_string(format!("themes/{}.toml", config.visuals.theme))
+            .expect("Something went wrong reading the theme file!"),
+    )
+    .expect("Something went wrong parsing the theme file!");
+
     App::build()
         .add_startup_system(setup.system())
-        .add_startup_stage("world_spawn", SystemStage::single(world_spawn.system()))
         .add_system(snake_movement_input.system())
         .add_system(despawning.system().before(Labels::Moving))
         .add_system_set(
             SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(TICK_LENGTH))
+                .with_run_criteria(FixedTimestep::step(config.game.tick.length))
                 .with_system(snake_movement.system().label(Labels::Moving))
                 .with_system(
                     snake_respawn
@@ -51,19 +102,23 @@ fn main() {
         )
         .add_system_set(
             SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(TICK_LENGTH * 16.0))
+                .with_run_criteria(FixedTimestep::step(
+                    config.game.tick.length * config.game.tick.food as f64,
+                ))
                 .with_system(food_spawn.system()),
         )
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
         .insert_resource(WindowDescriptor {
             title: TITLE.to_string(),
-            width: (GRID_WIDTH * GRID_SCALE) as f32,
-            height: (GRID_HEIGHT * GRID_SCALE) as f32,
+            width: (config.game.grid.width * config.visuals.scale) as f32,
+            height: (config.game.grid.height * config.visuals.scale) as f32,
             resizable: false,
             ..Default::default()
         })
-        .insert_resource(ClearColor(Color::hex(theme::GRID_BACKGROUND).unwrap()))
+        .insert_resource(ClearColor(Color::hex(&theme.background).unwrap()))
         .insert_resource(RespawnEvent::default())
+        .insert_resource(config)
+        .insert_resource(theme)
         .add_plugins(DefaultPlugins)
         .run();
 }
@@ -72,46 +127,54 @@ fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
+    config: Res<Config>,
+    theme: Res<Theme>,
 ) {
-    commands.insert_resource(AudioAssets::new(&asset_server));
+    commands.insert_resource(AudioAssets::new(&asset_server, &config));
 
     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-    let mut wall = |x, y| wall_spawn(&mut commands, &mut materials, GridPosition::new(x, y));
-    for x in 0..GRID_WIDTH {
+    let mut wall = |x, y| {
+        wall_spawn(
+            &mut commands,
+            &mut materials,
+            GridPosition::new(x, y),
+            &config,
+            &theme,
+        )
+    };
+    for x in 0..config.game.grid.width {
         wall(x, 0);
-        wall(x, GRID_HEIGHT - 1);
+        wall(x, config.game.grid.height - 1);
     }
-    for y in 1..GRID_HEIGHT - 1 {
+    for y in 1..config.game.grid.height - 1 {
         wall(0, y);
-        wall(GRID_WIDTH - 1, y);
+        wall(config.game.grid.width - 1, y);
     }
 
-    const CORNER_WALLS: bool = true;
-
-    if CORNER_WALLS {
+    if config.game.grid.corner_walls {
         // Bottom-left wall block
         wall(2, 2);
         wall(3, 2);
         wall(2, 3);
         wall(3, 3);
-    
+
         // Top-left wall block
-        wall(2, GRID_HEIGHT - 4);
-        wall(3, GRID_HEIGHT - 4);
-        wall(2, GRID_HEIGHT - 3);
-        wall(3, GRID_HEIGHT - 3);
-    
+        wall(2, config.game.grid.height - 4);
+        wall(3, config.game.grid.height - 4);
+        wall(2, config.game.grid.height - 3);
+        wall(3, config.game.grid.height - 3);
+
         // Bottom-right wall block
-        wall(GRID_WIDTH - 4, 2);
-        wall(GRID_WIDTH - 3, 2);
-        wall(GRID_WIDTH - 4, 3);
-        wall(GRID_WIDTH - 3, 3);
-    
+        wall(config.game.grid.width - 4, 2);
+        wall(config.game.grid.width - 3, 2);
+        wall(config.game.grid.width - 4, 3);
+        wall(config.game.grid.width - 3, 3);
+
         // Top-right wall block
-        wall(GRID_WIDTH - 4, GRID_HEIGHT - 4);
-        wall(GRID_WIDTH - 3, GRID_HEIGHT - 4);
-        wall(GRID_WIDTH - 4, GRID_HEIGHT - 3);
-        wall(GRID_WIDTH - 3, GRID_HEIGHT - 3);
+        wall(config.game.grid.width - 4, config.game.grid.height - 4);
+        wall(config.game.grid.width - 3, config.game.grid.height - 4);
+        wall(config.game.grid.width - 4, config.game.grid.height - 3);
+        wall(config.game.grid.width - 3, config.game.grid.height - 3);
     }
 
     let mut spawn_positions = SpawnPositions::default();
@@ -126,48 +189,47 @@ fn setup(
     spawn(5, 5, Direction::Up);
 
     // Top-left spawn
-    spawn(5, GRID_HEIGHT - 6, Direction::Right);
-    spawn(5, GRID_HEIGHT - 6, Direction::Down);
+    spawn(5, config.game.grid.height - 6, Direction::Right);
+    spawn(5, config.game.grid.height - 6, Direction::Down);
 
     // Bottom-right spaw
-    spawn(GRID_WIDTH - 6, 5, Direction::Left);
-    spawn(GRID_WIDTH - 6, 5, Direction::Up);
+    spawn(config.game.grid.width - 6, 5, Direction::Left);
+    spawn(config.game.grid.width - 6, 5, Direction::Up);
 
     // Top-right spawn
-    spawn(GRID_WIDTH - 6, GRID_HEIGHT - 6, Direction::Left);
-    spawn(GRID_WIDTH - 6, GRID_HEIGHT - 6, Direction::Down);
+    spawn(
+        config.game.grid.width - 6,
+        config.game.grid.height - 6,
+        Direction::Left,
+    );
+    spawn(
+        config.game.grid.width - 6,
+        config.game.grid.height - 6,
+        Direction::Down,
+    );
 
     commands.insert_resource(spawn_positions);
 }
 
-fn grid_positioning(mut query: Query<(&GridPosition, &mut Transform)>) {
+fn grid_positioning(mut query: Query<(&GridPosition, &mut Transform)>, config: Res<Config>) {
     for (grid_position, mut transform) in query.iter_mut() {
         transform.translation = transform.translation.lerp(
-            grid_to_vector(grid_position),
+            grid_to_vector(grid_position, &config),
             grid_position.t.unwrap_or(1.0),
         );
     }
 }
 
-fn grid_to_vector(grid_position: &GridPosition) -> Vec3 {
+fn grid_to_vector(grid_position: &GridPosition, config: &Res<Config>) -> Vec3 {
     Vec3::new(
-        (grid_position.x as f32 - GRID_WIDTH as f32 / 2.0) * GRID_SCALE as f32
-            + GRID_SCALE as f32 / 2.0,
-        (grid_position.y as f32 - GRID_HEIGHT as f32 / 2.0) * GRID_SCALE as f32
-            + GRID_SCALE as f32 / 2.0,
+        (grid_position.x as f32 - config.game.grid.width as f32 / 2.0)
+            * config.visuals.scale as f32
+            + config.visuals.scale as f32 / 2.0,
+        (grid_position.y as f32 - config.game.grid.height as f32 / 2.0)
+            * config.visuals.scale as f32
+            + config.visuals.scale as f32 / 2.0,
         0.0,
     )
-}
-
-fn world_spawn(mut commands: Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
-    commands.spawn_bundle(SpriteBundle {
-        material: materials.add(Color::hex(theme::GRID_BACKGROUND).unwrap().into()),
-        sprite: Sprite::new(Vec2::new(
-            (GRID_WIDTH * GRID_SCALE) as f32,
-            (GRID_HEIGHT * GRID_SCALE) as f32,
-        )),
-        ..Default::default()
-    });
 }
 
 fn food_spawn(
@@ -176,14 +238,19 @@ fn food_spawn(
     grid_positions: Query<&GridPosition>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
+    config: Res<Config>,
+    theme: Res<Theme>,
 ) {
     // Return and spawn no food if there are no available grid positions (entire grid full)
-    if grid_positions.iter().len() >= (GRID_WIDTH * GRID_HEIGHT) as usize {
+    if grid_positions.iter().len() >= (config.game.grid.width * config.game.grid.height) as usize {
         return;
     }
     // This will prevent an infinite loop here:
     let grid_position = 'outer: loop {
-        let possible_grid_position = GridPosition::random();
+        let possible_grid_position = GridPosition::new(
+            (random::<f32>() * config.game.grid.width as f32) as u32,
+            (random::<f32>() * config.game.grid.height as f32) as u32,
+        );
         for exisiting_grid_position in grid_positions.iter() {
             if exisiting_grid_position.x == possible_grid_position.x
                 && exisiting_grid_position.y == possible_grid_position.y
@@ -196,15 +263,15 @@ fn food_spawn(
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.add(
-                Color::hex(theme::FOOD.choose(&mut rand::thread_rng()).unwrap())
+                Color::hex(theme.food.choose(&mut rand::thread_rng()).unwrap())
                     .unwrap()
                     .into(),
             ),
             sprite: Sprite::new(Vec2::new(
-                GRID_SCALE as f32 * 0.875,
-                GRID_SCALE as f32 * 0.875,
+                config.visuals.scale as f32 * 0.875,
+                config.visuals.scale as f32 * 0.875,
             )),
-            transform: Transform::from_translation(grid_to_vector(&grid_position)),
+            transform: Transform::from_translation(grid_to_vector(&grid_position, &config)),
             ..Default::default()
         })
         .insert(grid_position)
@@ -216,12 +283,17 @@ fn wall_spawn(
     commands: &mut Commands,
     materials: &mut ResMut<Assets<ColorMaterial>>,
     grid_position: GridPosition,
+    config: &Res<Config>,
+    theme: &Res<Theme>,
 ) {
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.add(Color::hex(theme::BACKGROUND).unwrap().into()),
-            sprite: Sprite::new(Vec2::new(GRID_SCALE as f32, GRID_SCALE as f32)),
-            transform: Transform::from_translation(grid_to_vector(&grid_position)),
+            material: materials.add(Color::hex(&theme.walls).unwrap().into()),
+            sprite: Sprite::new(Vec2::new(
+                config.visuals.scale as f32,
+                config.visuals.scale as f32,
+            )),
+            transform: Transform::from_translation(grid_to_vector(&grid_position, &config)),
             ..Default::default()
         })
         .insert(grid_position)
@@ -237,6 +309,8 @@ fn snake_respawn(
     spawn_positions: Res<SpawnPositions>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
+    config: Res<Config>,
+    theme: Res<Theme>,
 ) {
     if respawn.time <= time.seconds_since_startup() && !respawn.completed {
         snake_spawn(
@@ -246,12 +320,12 @@ fn snake_respawn(
             spawn_positions,
             audio,
             audio_assets,
+            config,
+            theme,
         );
         respawn.completed = true;
     }
 }
-
-const SPAWN_SNAKE_SEGMENTS: u32 = 2;
 
 fn snake_spawn(
     mut commands: Commands,
@@ -260,6 +334,8 @@ fn snake_spawn(
     spawn_positions: Res<SpawnPositions>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
+    config: Res<Config>,
+    theme: Res<Theme>,
 ) {
     let spawn_position = spawn_positions
         .spawn_positions
@@ -268,7 +344,7 @@ fn snake_spawn(
     let mut snake_head = SnakeHead::new(spawn_position.direction);
     let snake_head_position = spawn_position.grid_position.clone();
     let segment_direction = snake_head.direction.opposite().vec();
-    for i in 1..SPAWN_SNAKE_SEGMENTS {
+    for i in 1..config.game.snake.segments {
         snake_head.spawn_segment(
             None,
             &mut commands,
@@ -278,16 +354,18 @@ fn snake_spawn(
                 ((segment_direction.y * (i as f32)) + snake_head_position.y as f32) as u32,
             ),
             &mut windows,
+            &config,
+            &theme,
         )
     }
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.add(Color::hex(theme::SNAKE).unwrap().into()),
+            material: materials.add(Color::hex(&theme.snake).unwrap().into()),
             sprite: Sprite::new(Vec2::new(
-                GRID_SCALE as f32 * 0.875,
-                GRID_SCALE as f32 * 0.875,
+                config.visuals.scale as f32 * 0.875,
+                config.visuals.scale as f32 * 0.875,
             )),
-            transform: Transform::from_translation(grid_to_vector(&snake_head_position)),
+            transform: Transform::from_translation(grid_to_vector(&snake_head_position, &config)),
             ..Default::default()
         })
         .insert(snake_head_position)
@@ -339,6 +417,7 @@ fn snake_collision_check(
     time: Res<Time>,
     mut respawn_event: ResMut<RespawnEvent>,
     audio_assets: Res<AudioAssets>,
+    config: Res<Config>,
 ) {
     for (snake_head_entity, snake_head, snake_head_position) in snake_heads.iter_mut() {
         let mut despawn = || {
@@ -348,11 +427,14 @@ fn snake_collision_check(
                 &time,
                 &mut respawn_event,
                 &audio_assets,
+                &config,
             );
         };
         // It is unnecessary to check if the x- or y-positions are less than 0
         // since this is impossible for the unsigned integers that they are stored in
-        if snake_head_position.x >= GRID_WIDTH || snake_head_position.y >= GRID_HEIGHT {
+        if snake_head_position.x >= config.game.grid.width
+            || snake_head_position.y >= config.game.grid.height
+        {
             despawn();
         }
         for segment in snake_head.segments.iter() {
@@ -383,6 +465,8 @@ fn snake_eating(
     time: Res<Time>,
     mut windows: ResMut<Windows>,
     audio_assets: Res<AudioAssets>,
+    config: Res<Config>,
+    theme: Res<Theme>,
 ) {
     for (mut snake_head, snake_head_grid_position) in snake_heads.iter_mut() {
         for (food, food_position) in foods.iter() {
@@ -403,6 +487,8 @@ fn snake_eating(
                     &mut materials,
                     snake_head_grid_position.clone(),
                     &mut windows,
+                    &config,
+                    &theme,
                 );
             }
         }
@@ -501,6 +587,8 @@ impl SnakeHead {
         materials: &mut ResMut<Assets<ColorMaterial>>,
         grid_position: GridPosition,
         windows: &mut ResMut<Windows>,
+        config: &Res<Config>,
+        theme: &Res<Theme>,
     ) {
         self.segments.insert(
             match index {
@@ -509,12 +597,12 @@ impl SnakeHead {
             },
             commands
                 .spawn_bundle(SpriteBundle {
-                    material: materials.add(Color::hex(theme::SNAKE).unwrap().into()),
+                    material: materials.add(Color::hex(&theme.snake).unwrap().into()),
                     sprite: Sprite::new(Vec2::new(
-                        GRID_SCALE as f32 * 0.75,
-                        GRID_SCALE as f32 * 0.75,
+                        config.visuals.scale as f32 * 0.75,
+                        config.visuals.scale as f32 * 0.75,
                     )),
-                    transform: Transform::from_translation(grid_to_vector(&grid_position)),
+                    transform: Transform::from_translation(grid_to_vector(&grid_position, config)),
                     ..Default::default()
                 })
                 .insert(SnakeSegment)
@@ -525,7 +613,7 @@ impl SnakeHead {
         windows.get_primary_mut().unwrap().set_title(format!(
             "{} — Score: {}",
             TITLE,
-            self.segments.len() as u32 + 1 - SPAWN_SNAKE_SEGMENTS
+            self.segments.len() as u32 + 1 - config.game.snake.segments
         ));
     }
     fn update_segment_positions(
@@ -563,16 +651,15 @@ impl SnakeHead {
         time: &Res<Time>,
         respawn_event: &mut ResMut<RespawnEvent>,
         audio_assets: &Res<AudioAssets>,
+        config: &Res<Config>,
     ) {
-        const SEGMENT_DESPAWN_INTERVAL: f64 = 0.1;
-        const RESPAWN_DELAY: f64 = 0.5;
         for (i, segment) in self.segments.iter().enumerate() {
             commands
                 .entity(*segment)
                 .remove::<SnakeSegment>()
                 .insert(Despawning::new(
                     time.seconds_since_startup(),
-                    (i + 1) as f64 * SEGMENT_DESPAWN_INTERVAL,
+                    (i + 1) as f64 * config.game.snake.segment_despawn_interval,
                     Some(audio_assets.destroy.clone_weak()),
                 ));
         }
@@ -585,8 +672,8 @@ impl SnakeHead {
                 Some(audio_assets.destroy.clone_weak()),
             ));
         respawn_event.time = time.seconds_since_startup()
-            + SEGMENT_DESPAWN_INTERVAL * self.segments.len() as f64
-            + RESPAWN_DELAY;
+            + config.game.snake.segment_despawn_interval * self.segments.len() as f64
+            + config.game.snake.respawn_delay;
         respawn_event.completed = false;
     }
 }
@@ -628,12 +715,6 @@ impl GridPosition {
             t: Some(0.375),
         }
     }
-    fn random() -> Self {
-        Self::new(
-            (random::<f32>() * GRID_WIDTH as f32) as u32,
-            (random::<f32>() * GRID_HEIGHT as f32) as u32,
-        )
-    }
 }
 
 struct SpawnPosition {
@@ -663,13 +744,13 @@ struct AudioAssets {
 }
 
 impl AudioAssets {
-    fn new(asset_server: &AssetServer) -> Self {
-        let load = |name: &str| asset_server.load(format!("sounds/{}.mp3", name).as_str());
+    fn new(asset_server: &AssetServer, config: &Res<Config>) -> Self {
+        let load = |name: &str| asset_server.load(format!("sounds/{}", name).as_str());
         AudioAssets {
-            destroy: load("destroy"),
-            eat: load("eat"),
-            spawn_food: load("spawn_food"),
-            spawn_snake: load("spawn_snake"),
+            destroy: load(&config.audio.destroy),
+            eat: load(&config.audio.eat),
+            spawn_food: load(&config.audio.spawn_food),
+            spawn_snake: load(&config.audio.spawn_snake),
         }
     }
 }
