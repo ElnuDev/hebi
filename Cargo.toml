@@ -8,3 +8,4 @@ edition = "2018"
 [dependencies]
 bevy = "0.5.0"
 rand = "0.8.4"
+toml = "0.5.8"

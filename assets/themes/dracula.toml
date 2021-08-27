@@ -1,0 +1,35 @@
+# Dracula Theme for Hebi
+# Website:    https://draculatheme.com
+# Repository: https://github.com/dracula/dracula-theme
+
+# Dracula Background
+walls = "282a36"
+
+# Dracula Current Line/Selection
+background = "44475a"
+
+# Dracula Foreground
+snake = "f8f8f2"
+
+food = [
+    # Dracula Cyan
+	"8be9fd",
+	
+    # Dracula Green
+    "50fa7b",
+	
+    # Dracula Orange
+    "ffb86c",
+	
+    # Dracula Pink
+    "ff79c6",
+
+    # Dracula Purple
+	"bd93f9",
+    
+    # Dracula Red
+	"ff5555",
+    
+    # Dracula Yellow
+	"f1fa8c"
+]

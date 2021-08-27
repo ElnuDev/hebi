@@ -1,0 +1,7 @@
+theme = "dracula"
+
+[audio]
+destroy = "destory.mp3"
+eat = "eat.mp3"
+spawn_food = "spawn_food.mp3"
+spawn_snake = "spawn_snake.mp3"
