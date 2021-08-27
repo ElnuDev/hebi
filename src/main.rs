@@ -6,7 +6,6 @@ use rand::prelude::*;
 use rand::seq::SliceRandom;
 use serde::Deserialize;
 use std::fs;
-use toml;
 
 const TITLE: &str = "Hebi";
 
