@@ -1,7 +1,77 @@
+[visuals]
+# Visuals that don't affect gameplay
+
+# theme = "dracula" -> assets/themes/dracula.toml
+# What theme file to use
+# Default: "dracula"
 theme = "dracula"
 
+# Number of pixels per grid square
+# Default: 36
+scale = 36
+
+[game]
+# Gameplay settings that affect gameplay
+# Modifying these settings to erroneous values may cause
+# crashes, errors, and unexpected behavior.
+
+[game.grid]
+# With current spawning setup and
+# with corner_walls = false, width and height both must be at least 8
+# with corner_walls = true, width and height both must be at least 10
+
+# Grid width, including any walls
+# Default: 17
+width = 17
+
+# Grid height, including any walls
+# Default: 13
+height = 13
+
+# Whether or not there should be 2x2 corner walls in each corner of the map
+# Default: true
+corner_walls = true
+
+[game.tick]
+# In-game tick length in seconds
+# Default: 0.2
+length = 0.2
+
+# Amount of time between food spawns in ticks
+# Default: 16
+food = 16
+
+[game.snake]
+# Number of segments the snake spawns with, including the head
+# Default: 2
+segments = 2
+
+# Interval between each segment despawning upon snake death in seconds
+# You can set this to 0 if you want the entire snake to despawn at once.
+# Default: 0.1
+segment_despawn_interval = 0.1
+
+# Delay between all segments despawning and respawn in seconds
+# Default: 0.5
+respawn_delay = 0.5
+
 [audio]
-destroy = "destory.mp3"
+# Audio settings that don't affect gameplay
+
+# "audio.mp3" -> assets/sounds/audio.mp3
+
+# Audio file for for when food is eaten.
+# Default: "eat.mp3"
 eat = "eat.mp3"
+
+# Audio file for the destruction of the snake's head and segments
+# Default: "destroy.mp3"
+destroy = "destroy.mp3"
+
+# Audio file for when food is spawned
+# Default: "spawn_food.mp3"
 spawn_food = "spawn_food.mp3"
+
+# Audio file for when the snake is spawned
+# Default: "spawn_snake.mp3"
 spawn_snake = "spawn_snake.mp3"
