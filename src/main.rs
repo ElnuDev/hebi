@@ -13,10 +13,10 @@ mod themes;
 use themes::dracula as theme;
 
 // World width in grid cells
-const GRID_WIDTH: u32 = 10;
+const GRID_WIDTH: u32 = 17;
 
 // World height in grid cells
-const GRID_HEIGHT: u32 = 10;
+const GRID_HEIGHT: u32 = 13;
 
 // Pixel dimension of grid cell
 const GRID_SCALE: u32 = 36;
