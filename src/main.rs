@@ -13,10 +13,10 @@ mod themes;
 use themes::dracula as theme;
 
 // World width in grid cells
-const GRID_WIDTH: u32 = 17;
+const GRID_WIDTH: u32 = 10;
 
 // World height in grid cells
-const GRID_HEIGHT: u32 = 13;
+const GRID_HEIGHT: u32 = 10;
 
 // Pixel dimension of grid cell
 const GRID_SCALE: u32 = 36;
@@ -86,29 +86,33 @@ fn setup(
         wall(GRID_WIDTH - 1, y);
     }
 
-    // Bottom-left wall block
-    wall(2, 2);
-    wall(3, 2);
-    wall(2, 3);
-    wall(3, 3);
+    const CORNER_WALLS: bool = true;
 
-    // Top-left wall block
-    wall(2, GRID_HEIGHT - 4);
-    wall(3, GRID_HEIGHT - 4);
-    wall(2, GRID_HEIGHT - 3);
-    wall(3, GRID_HEIGHT - 3);
-
-    // Bottom-right wall block
-    wall(GRID_WIDTH - 4, 2);
-    wall(GRID_WIDTH - 3, 2);
-    wall(GRID_WIDTH - 4, 3);
-    wall(GRID_WIDTH - 3, 3);
-
-    // Top-right wall block
-    wall(GRID_WIDTH - 4, GRID_HEIGHT - 4);
-    wall(GRID_WIDTH - 3, GRID_HEIGHT - 4);
-    wall(GRID_WIDTH - 4, GRID_HEIGHT - 3);
-    wall(GRID_WIDTH - 3, GRID_HEIGHT - 3);
+    if CORNER_WALLS {
+        // Bottom-left wall block
+        wall(2, 2);
+        wall(3, 2);
+        wall(2, 3);
+        wall(3, 3);
+    
+        // Top-left wall block
+        wall(2, GRID_HEIGHT - 4);
+        wall(3, GRID_HEIGHT - 4);
+        wall(2, GRID_HEIGHT - 3);
+        wall(3, GRID_HEIGHT - 3);
+    
+        // Bottom-right wall block
+        wall(GRID_WIDTH - 4, 2);
+        wall(GRID_WIDTH - 3, 2);
+        wall(GRID_WIDTH - 4, 3);
+        wall(GRID_WIDTH - 3, 3);
+    
+        // Top-right wall block
+        wall(GRID_WIDTH - 4, GRID_HEIGHT - 4);
+        wall(GRID_WIDTH - 3, GRID_HEIGHT - 4);
+        wall(GRID_WIDTH - 4, GRID_HEIGHT - 3);
+        wall(GRID_WIDTH - 3, GRID_HEIGHT - 3);
+    }
 
     let mut spawn_positions = SpawnPositions::default();
     let mut spawn = |x, y, direction| {
