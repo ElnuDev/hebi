@@ -1,0 +1,4 @@
+walls = "222233"
+background = "000011"
+snake = "ddddee"
+food = ["5599ff", "ffc455", "ff6f55"]
