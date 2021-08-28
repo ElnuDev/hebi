@@ -13,9 +13,7 @@
 - [ ] Add UI (`bevy_egui` seems to be the way to go)
 - [ ] Add state management system (menu, game, game over)
 - [ ] Add menu arena size adjustment before game start
-- [ ] Themes
-	- [ ] Add more themes
-	- [ ] Add theme toggle
+- [x] Themes
 
 ## Gameplay
 
