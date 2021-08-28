@@ -1,7 +1,7 @@
 [visuals]
 # Visuals that don't affect gameplay
 
-# theme = "dracula" -> assets/themes/dracula.toml
+# theme = "dracula" -> themes/dracula.toml
 # What theme file to use
 # Default: "dracula"
 theme = "dracula"
