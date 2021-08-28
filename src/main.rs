@@ -118,6 +118,7 @@ fn main() {
         .insert_resource(RespawnEvent::default())
         .insert_resource(config)
         .insert_resource(theme)
+        .insert_non_send_resource(rand::thread_rng())
         .add_plugins(DefaultPlugins)
         .run();
 }
@@ -239,6 +240,7 @@ fn food_spawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
+    mut thread_rng: NonSendMut<ThreadRng>,
 ) {
     // Return and spawn no food if there are no available grid positions (entire grid full)
     if grid_positions.iter().len() >= (config.game.grid.width * config.game.grid.height) as usize {
@@ -262,7 +264,7 @@ fn food_spawn(
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.add(
-                Color::hex(theme.food.choose(&mut rand::thread_rng()).unwrap())
+                Color::hex(theme.food.choose(&mut *thread_rng).unwrap())
                     .unwrap()
                     .into(),
             ),
