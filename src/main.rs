@@ -4,6 +4,7 @@ use bevy::core::FixedTimestep;
 use bevy::prelude::*;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
+use rand_pcg::Pcg64;
 use serde::Deserialize;
 use std::fs;
 
@@ -30,6 +31,7 @@ struct ConfigVisuals {
 
 #[derive(Deserialize)]
 struct ConfigGame {
+    seed: Option<u64>,
     grid: ConfigGameGrid,
     tick: ConfigGameTick,
     snake: ConfigGameSnake,
@@ -116,9 +118,12 @@ fn main() {
         })
         .insert_resource(ClearColor(Color::hex(&theme.background).unwrap()))
         .insert_resource(RespawnEvent::default())
+        .insert_resource(Pcg64::seed_from_u64(match config.game.seed {
+            Some(seed) => seed,
+            None => random(),
+        }))
         .insert_resource(config)
         .insert_resource(theme)
-        .insert_non_send_resource(rand::thread_rng())
         .add_plugins(DefaultPlugins)
         .run();
 }
@@ -240,7 +245,7 @@ fn food_spawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
-    mut thread_rng: NonSendMut<ThreadRng>,
+    mut random: ResMut<Pcg64>,
 ) {
     // Return and spawn no food if there are no available grid positions (entire grid full)
     if grid_positions.iter().len() >= (config.game.grid.width * config.game.grid.height) as usize {
@@ -249,8 +254,8 @@ fn food_spawn(
     // This will prevent an infinite loop here:
     let grid_position = 'outer: loop {
         let possible_grid_position = GridPosition::new(
-            (random::<f32>() * config.game.grid.width as f32) as u32,
-            (random::<f32>() * config.game.grid.height as f32) as u32,
+            random.next_u32() % config.game.grid.width,
+            random.next_u32() % config.game.grid.height,
         );
         for exisiting_grid_position in grid_positions.iter() {
             if exisiting_grid_position.x == possible_grid_position.x
@@ -264,7 +269,7 @@ fn food_spawn(
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.add(
-                Color::hex(theme.food.choose(&mut *thread_rng).unwrap())
+                Color::hex(theme.food.choose(&mut *random).unwrap())
                     .unwrap()
                     .into(),
             ),
@@ -312,6 +317,7 @@ fn snake_respawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
+    random: ResMut<Pcg64>,
 ) {
     if respawn.time <= time.seconds_since_startup() && !respawn.completed {
         snake_spawn(
@@ -323,6 +329,7 @@ fn snake_respawn(
             audio_assets,
             config,
             theme,
+            random,
         );
         respawn.completed = true;
     }
@@ -337,10 +344,11 @@ fn snake_spawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
+    mut random: ResMut<Pcg64>,
 ) {
     let spawn_position = spawn_positions
         .spawn_positions
-        .choose(&mut rand::thread_rng())
+        .choose(&mut *random)
         .unwrap();
     let mut snake_head = SnakeHead::new(spawn_position.direction);
     let snake_head_position = spawn_position.grid_position.clone();

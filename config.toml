@@ -15,6 +15,12 @@ scale = 36
 # Modifying these settings to erroneous values may cause
 # crashes, errors, and unexpected behavior.
 
+# Game seed
+# To pick a random seed for each start, simply uncomment this line.
+# It must be an unsigned 32-bit integer.
+# In other words, non-negative and not rediculously huge.
+# seed = 0
+
 [game.grid]
 # With current spawning setup and
 # with corner_walls = false, width and height both must be at least 8
