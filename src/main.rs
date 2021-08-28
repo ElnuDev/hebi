@@ -73,6 +73,25 @@ struct Theme {
     food: Vec<String>,
 }
 
+struct Random {
+    snake_spawn_generator: Pcg64,
+    food_spawn_generator: Pcg64,
+}
+
+impl Random {
+    fn new(config: &Config) -> Self {
+        let seed = match config.game.seed {
+            Some(seed) => seed,
+            None => random(),
+        };
+        let generator = || Pcg64::seed_from_u64(seed);
+        Random {
+            snake_spawn_generator: generator(),
+            food_spawn_generator: generator(),
+        }
+    }
+}
+
 fn main() {
     let config: Config = toml::from_str(
         &fs::read_to_string("config.toml").expect("Something went wrong reading the config file!"),
@@ -118,10 +137,7 @@ fn main() {
         })
         .insert_resource(ClearColor(Color::hex(&theme.background).unwrap()))
         .insert_resource(RespawnEvent::default())
-        .insert_resource(Pcg64::seed_from_u64(match config.game.seed {
-            Some(seed) => seed,
-            None => random(),
-        }))
+        .insert_resource(Random::new(&config))
         .insert_resource(config)
         .insert_resource(theme)
         .add_plugins(DefaultPlugins)
@@ -245,7 +261,7 @@ fn food_spawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
-    mut random: ResMut<Pcg64>,
+    mut random: ResMut<Random>,
 ) {
     // Return and spawn no food if there are no available grid positions (entire grid full)
     if grid_positions.iter().len() >= (config.game.grid.width * config.game.grid.height) as usize {
@@ -254,8 +270,8 @@ fn food_spawn(
     // This will prevent an infinite loop here:
     let grid_position = 'outer: loop {
         let possible_grid_position = GridPosition::new(
-            random.next_u32() % config.game.grid.width,
-            random.next_u32() % config.game.grid.height,
+            random.snake_spawn_generator.next_u32() % config.game.grid.width,
+            random.snake_spawn_generator.next_u32() % config.game.grid.height,
         );
         for exisiting_grid_position in grid_positions.iter() {
             if exisiting_grid_position.x == possible_grid_position.x
@@ -269,7 +285,7 @@ fn food_spawn(
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.add(
-                Color::hex(theme.food.choose(&mut *random).unwrap())
+                Color::hex(theme.food.choose(&mut random.food_spawn_generator).unwrap())
                     .unwrap()
                     .into(),
             ),
@@ -317,6 +333,7 @@ fn snake_respawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
+    random: ResMut<Random>,
 ) {
     if respawn.time <= time.seconds_since_startup() && !respawn.completed {
         snake_spawn(
@@ -328,6 +345,7 @@ fn snake_respawn(
             audio_assets,
             config,
             theme,
+            random,
         );
         respawn.completed = true;
     }
@@ -342,10 +360,11 @@ fn snake_spawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
+    mut random: ResMut<Random>,
 ) {
     let spawn_position = spawn_positions
         .spawn_positions
-        .choose(&mut rand::thread_rng())
+        .choose(&mut random.snake_spawn_generator)
         .unwrap();
     let mut snake_head = SnakeHead::new(spawn_position.direction);
     let snake_head_position = spawn_position.grid_position.clone();
