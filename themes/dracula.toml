@@ -2,11 +2,11 @@
 # Website:    https://draculatheme.com
 # Repository: https://github.com/dracula/dracula-theme
 
-# Dracula Background
-walls = "282a36"
-
 # Dracula Current Line/Selection
-background = "44475a"
+walls = "44475a"
+
+# Dracula Background
+background = "282a36"
 
 # Dracula Foreground
 snake = "f8f8f2"
