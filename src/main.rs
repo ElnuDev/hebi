@@ -11,6 +11,7 @@ use rand_pcg::Pcg64;
 use std::fs;
 
 const TITLE: &str = "Hebi";
+const MISSING_COLOR: Color = Color::FUCHSIA;
 
 #[derive(SystemLabel, Debug, Hash, PartialEq, Eq, Clone)]
 enum Labels {
@@ -77,7 +78,9 @@ fn main() {
             resizable: false,
             ..Default::default()
         })
-        .insert_resource(ClearColor(Color::hex(&theme.background).unwrap()))
+        .insert_resource(ClearColor(
+            Color::hex(&theme.background).unwrap_or(MISSING_COLOR),
+        ))
         .insert_resource(RespawnEvent::default())
         .insert_resource(Random::new(&config))
         .insert_resource(config)
@@ -226,7 +229,7 @@ fn food_spawn(
         .spawn_bundle(SpriteBundle {
             material: materials.add(
                 Color::hex(theme.food.choose(&mut random.food_spawn_generator).unwrap())
-                    .unwrap()
+                    .unwrap_or(MISSING_COLOR)
                     .into(),
             ),
             sprite: Sprite::new(Vec2::new(
@@ -250,7 +253,7 @@ fn wall_spawn(
 ) {
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.add(Color::hex(&theme.walls).unwrap().into()),
+            material: materials.add(Color::hex(&theme.walls).unwrap_or(MISSING_COLOR).into()),
             sprite: Sprite::new(Vec2::new(
                 config.grid_scale as f32,
                 config.grid_scale as f32,
@@ -325,7 +328,7 @@ fn snake_spawn(
     }
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.add(Color::hex(&theme.snake).unwrap().into()),
+            material: materials.add(Color::hex(&theme.snake).unwrap_or(MISSING_COLOR).into()),
             sprite: Sprite::new(Vec2::new(
                 config.grid_scale as f32 * 0.875,
                 config.grid_scale as f32 * 0.875,
@@ -561,7 +564,8 @@ impl SnakeHead {
             },
             commands
                 .spawn_bundle(SpriteBundle {
-                    material: materials.add(Color::hex(&theme.snake).unwrap().into()),
+                    material: materials
+                        .add(Color::hex(&theme.snake).unwrap_or(MISSING_COLOR).into()),
                     sprite: Sprite::new(Vec2::new(
                         config.grid_scale as f32 * 0.75,
                         config.grid_scale as f32 * 0.75,
