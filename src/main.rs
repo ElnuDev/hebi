@@ -317,7 +317,6 @@ fn snake_respawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
-    random: ResMut<Pcg64>,
 ) {
     if respawn.time <= time.seconds_since_startup() && !respawn.completed {
         snake_spawn(
@@ -329,7 +328,6 @@ fn snake_respawn(
             audio_assets,
             config,
             theme,
-            random,
         );
         respawn.completed = true;
     }
@@ -344,11 +342,10 @@ fn snake_spawn(
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     theme: Res<Theme>,
-    mut random: ResMut<Pcg64>,
 ) {
     let spawn_position = spawn_positions
         .spawn_positions
-        .choose(&mut *random)
+        .choose(&mut rand::thread_rng())
         .unwrap();
     let mut snake_head = SnakeHead::new(spawn_position.direction);
     let snake_head_position = spawn_position.grid_position.clone();
