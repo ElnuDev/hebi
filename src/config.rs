@@ -146,7 +146,11 @@ impl Map {
                     for x in 0..*width {
                         for y in 0..*height {
                             cells.insert((x, y), {
-                                if x == 0
+                                if x == width / 2 - 1 && y == height / 2 {
+                                    Cell::Spawn(Direction::Left)
+                                } else if x == width / 2 + 1 && y == height / 2 {
+                                    Cell::Spawn(Direction::Right)
+                                } else if x == 0
                                     || x == width - 1
                                     || y == 0
                                     || y == height - 1
@@ -156,10 +160,6 @@ impl Map {
                                         || y > height - corridor_height - 2))
                                 {
                                     Cell::Wall
-                                } else if x == width / 2 - 1 && y == height / 2 {
-                                    Cell::Spawn(Direction::Left)
-                                } else if x == width / 2 + 1 && y == height / 2 {
-                                    Cell::Spawn(Direction::Right)
                                 } else {
                                     Cell::Empty
                                 }
