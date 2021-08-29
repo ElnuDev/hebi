@@ -44,6 +44,7 @@ impl Default for Config {
 }
 
 #[derive(Deserialize)]
+#[serde(default)]
 pub struct Theme {
     pub walls: String,
     pub background: String,
