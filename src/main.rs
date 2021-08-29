@@ -65,6 +65,7 @@ fn main() {
     let (grid_width, grid_height) = {
         match config.map {
             Map::Box { width, height, .. } => (width, height),
+            Map::Corridors { width, height, .. } => (width, height),
             Map::Custom {
                 data: MapData { width, height, .. },
             } => (width, height),

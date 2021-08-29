@@ -53,6 +53,13 @@ pub enum Map {
         corner_walls: u32,
         corner_walls_offset: u32,
     },
+    #[serde(rename = "corridors")]
+    Corridors {
+        width: u32,
+        height: u32,
+        corridor_width: u32,
+        corridor_height: u32,
+    },
     #[serde(rename = "custom")]
     Custom {
         #[serde(deserialize_with = "deserialize_map_data")]
@@ -111,6 +118,42 @@ impl Map {
                                         && x < width - corner_walls_offset
                                         && y >= *corner_walls_offset
                                         && y < corner_walls_offset + corner_walls)
+                                {
+                                    Cell::Wall
+                                } else if x == width / 2 - 1 && y == height / 2 {
+                                    Cell::Spawn(Direction::Left)
+                                } else if x == width / 2 + 1 && y == height / 2 {
+                                    Cell::Spawn(Direction::Right)
+                                } else {
+                                    Cell::Empty
+                                }
+                            });
+                        }
+                    }
+                    cells
+                },
+            },
+            Self::Corridors {
+                width,
+                height,
+                corridor_width,
+                corridor_height,
+            } => MapData {
+                width: *width,
+                height: *height,
+                cells: {
+                    let mut cells = HashMap::new();
+                    for x in 0..*width {
+                        for y in 0..*height {
+                            cells.insert((x, y), {
+                                if x == 0
+                                    || x == width - 1
+                                    || y == 0
+                                    || y == height - 1
+                                    || (x % (corridor_width + 1) == 0
+                                        && x < width - corridor_width - 1 // -1 because single-width coordiors are dead ends
+                                        && (y < *corridor_height + 1
+                                        || y > height - corridor_height - 2))
                                 {
                                     Cell::Wall
                                 } else if x == width / 2 - 1 && y == height / 2 {
