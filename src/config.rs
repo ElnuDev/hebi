@@ -50,7 +50,8 @@ pub enum Map {
     Box {
         width: u32,
         height: u32,
-        corner_walls: bool,
+        corner_walls: u32,
+        corner_walls_offset: u32,
     },
     #[serde(rename = "custom")]
     Custom {
@@ -64,11 +65,73 @@ impl Default for Map {
         Self::Box {
             width: 17,
             height: 13,
-            corner_walls: true,
+            corner_walls: 2,
+            corner_walls_offset: 2,
         }
     }
 }
 
+impl Map {
+    pub fn get_map_data(&self) -> MapData {
+        match self {
+            Self::Box {
+                width,
+                height,
+                corner_walls,
+                corner_walls_offset,
+            } => MapData {
+                width: *width,
+                height: *height,
+                cells: {
+                    let mut cells = HashMap::new();
+                    for x in 0..*width {
+                        for y in 0..*height {
+                            cells.insert((x, y), {
+                                if x == 0
+                                    || x == width - 1
+                                    || y == 0
+                                    || y == height - 1
+                                    // Bottom-left corner wall
+                                    || (x >= *corner_walls_offset
+                                        && x < corner_walls_offset + corner_walls
+                                        && y >= height - corner_walls_offset - corner_walls
+                                        && y < height - corner_walls_offset)
+                                    // Top-left corner wall
+                                    || (x >= *corner_walls_offset
+                                        && x < corner_walls_offset + corner_walls
+                                        && y >= *corner_walls_offset
+                                        && y < corner_walls_offset + corner_walls)
+                                    // Bottom-right corner wall
+                                    || (x >= width - corner_walls_offset - corner_walls
+                                        && x < width - corner_walls_offset
+                                        && y >= height - corner_walls_offset - corner_walls
+                                        && y < height - corner_walls_offset)
+                                    // Top-right corner wall
+                                    || (x >= width - corner_walls_offset - corner_walls
+                                        && x < width - corner_walls_offset
+                                        && y >= *corner_walls_offset
+                                        && y < corner_walls_offset + corner_walls)
+                                {
+                                    Cell::Wall
+                                } else if x == width / 2 - 1 && y == height / 2 {
+                                    Cell::Spawn(Direction::Left)
+                                } else if x == width / 2 + 1 && y == height / 2 {
+                                    Cell::Spawn(Direction::Right)
+                                } else {
+                                    Cell::Empty
+                                }
+                            });
+                        }
+                    }
+                    cells
+                },
+            },
+            Self::Custom { data } => data.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct MapData {
     pub width: u32,
     pub height: u32,

@@ -149,74 +149,15 @@ fn setup(
             .push(SpawnPosition::new(GridPosition::new(x, y), direction));
     };
 
-    match &config.map {
-        Map::Box {
-            width,
-            height,
-            corner_walls,
-        } => {
-            for x in 0..*width {
-                wall(x, 0);
-                wall(x, height - 1);
-            }
-            for y in 1..height - 1 {
-                wall(0, y);
-                wall(width - 1, y);
-            }
-
-            if *corner_walls {
-                // Bottom-left wall block
-                wall(2, 2);
-                wall(3, 2);
-                wall(2, 3);
-                wall(3, 3);
-
-                // Top-left wall block
-                wall(2, height - 4);
-                wall(3, height - 4);
-                wall(2, height - 3);
-                wall(3, height - 3);
-
-                // Bottom-right wall block
-                wall(width - 4, 2);
-                wall(width - 3, 2);
-                wall(width - 4, 3);
-                wall(width - 3, 3);
-
-                // Top-right wall block
-                wall(width - 4, height - 4);
-                wall(width - 3, height - 4);
-                wall(width - 4, height - 3);
-                wall(width - 3, height - 3);
-            }
-
-            // Bottom-left spawn
-            spawn(5, 5, Direction::Right);
-            spawn(5, 5, Direction::Up);
-
-            // Top-left spawn
-            spawn(5, height - 6, Direction::Right);
-            spawn(5, height - 6, Direction::Down);
-
-            // Bottom-right spaw
-            spawn(width - 6, 5, Direction::Left);
-            spawn(width - 6, 5, Direction::Up);
-
-            // Top-right spawn
-            spawn(width - 6, height - 6, Direction::Left);
-            spawn(width - 6, height - 6, Direction::Down);
+    let map_data = config.map.get_map_data();
+    let top = map_data.height - 1;
+    for (x, y, cell) in map_data.iter() {
+        match cell {
+            Cell::Empty => {}
+            Cell::Wall => wall(x, top - y),
+            Cell::Spawn(direction) => spawn(x, top - y, direction),
         }
-        Map::Custom { data } => {
-            let top = data.height - 1;
-            for (x, y, cell) in data.iter() {
-                match cell {
-                    Cell::Empty => {},
-                    Cell::Wall => wall(x, top - y),
-                    Cell::Spawn(direction) => spawn(x, top - y, direction),
-                }
-            }
-        }
-    };
+    }
 
     commands.insert_resource(spawn_positions);
 }
