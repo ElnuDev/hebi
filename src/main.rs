@@ -91,6 +91,7 @@ fn main() {
                 .with_system(snake_eating.system().after(Labels::Moving))
                 .with_system(snake_collision_check.system().after(Labels::Moving)),
         )
+        .add_system(snake_spawn.system())
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(
@@ -109,16 +110,17 @@ fn main() {
         .insert_resource(ClearColor(
             Color::hex(&theme.background).unwrap_or(MISSING_COLOR),
         ))
-        .insert_resource(RespawnEvent::default())
+        .insert_resource(Respawn::default())
         .insert_resource(Random::new(&config))
         .insert_resource(config)
         .insert_resource(theme)
-        .add_plugins(DefaultPlugins)
         .insert_resource(GridDimensions {
             width: grid_width,
             height: grid_height,
             scale: grid_scale,
         })
+        .add_event::<RespawnEvent>()
+        .add_plugins(DefaultPlugins)
         .run();
 }
 
@@ -252,10 +254,20 @@ fn wall_spawn(
 }
 
 fn snake_respawn(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    mut respawn: ResMut<RespawnEvent>,
+    mut respawn: ResMut<Respawn>,
+    mut respawn_writer: EventWriter<RespawnEvent>,
     time: Res<Time>,
+) {
+    if respawn.time <= time.seconds_since_startup() && !respawn.completed {
+        respawn_writer.send(RespawnEvent);
+        respawn.completed = true;
+    }
+}
+
+fn snake_spawn(
+    mut commands: Commands,
+    mut spawn_reader: EventReader<RespawnEvent>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     mut windows: ResMut<Windows>,
     spawn_positions: Res<SpawnPositions>,
     audio: Res<Audio>,
@@ -265,73 +277,46 @@ fn snake_respawn(
     theme: Res<Theme>,
     mut random: ResMut<Random>,
 ) {
-    if respawn.time <= time.seconds_since_startup() && !respawn.completed {
-        snake_spawn(
-            &mut commands,
-            &mut materials,
-            &mut windows,
-            &spawn_positions,
-            &audio,
-            &audio_assets,
-            &config,
-            &dimensions,
-            &theme,
-            &mut random,
-        );
-        respawn.completed = true;
+    for _respawn_event in spawn_reader.iter() {
+        let spawn_position = spawn_positions
+            .spawn_positions
+            .choose(&mut random.snake_spawn_generator)
+            .unwrap();
+        let mut snake_head = SnakeHead::new(spawn_position.direction);
+        let snake_head_position = spawn_position.grid_position.clone();
+        let segment_direction = snake_head.direction.opposite().vec();
+        for i in 1..config.snake_spawn_segments {
+            snake_head.spawn_segment(
+                None,
+                &mut commands,
+                &mut materials,
+                GridPosition::new(
+                    ((segment_direction.x * (i as f32)) + snake_head_position.x as f32) as u32,
+                    ((segment_direction.y * (i as f32)) + snake_head_position.y as f32) as u32,
+                ),
+                &mut windows,
+                &config,
+                &dimensions,
+                &theme,
+            )
+        }
+        commands
+            .spawn_bundle(SpriteBundle {
+                material: materials.add(Color::hex(&theme.snake).unwrap_or(MISSING_COLOR).into()),
+                sprite: Sprite::new(Vec2::new(
+                    config.grid_scale as f32 * 0.875,
+                    config.grid_scale as f32 * 0.875,
+                )),
+                transform: Transform::from_translation(grid_to_vector(
+                    &snake_head_position,
+                    &dimensions,
+                )),
+                ..Default::default()
+            })
+            .insert(snake_head_position)
+            .insert(snake_head);
+        audio.play(audio_assets.spawn_snake.clone_weak());
     }
-}
-
-fn snake_spawn(
-    commands: &mut Commands,
-    materials: &mut Assets<ColorMaterial>,
-    windows: &mut Windows,
-    spawn_positions: &SpawnPositions,
-    audio: &Audio,
-    audio_assets: &AudioAssets,
-    config: &Config,
-    dimensions: &GridDimensions,
-    theme: &Theme,
-    random: &mut Random,
-) {
-    let spawn_position = spawn_positions
-        .spawn_positions
-        .choose(&mut random.snake_spawn_generator)
-        .unwrap();
-    let mut snake_head = SnakeHead::new(spawn_position.direction);
-    let snake_head_position = spawn_position.grid_position.clone();
-    let segment_direction = snake_head.direction.opposite().vec();
-    for i in 1..config.snake_spawn_segments {
-        snake_head.spawn_segment(
-            None,
-            commands,
-            materials,
-            GridPosition::new(
-                ((segment_direction.x * (i as f32)) + snake_head_position.x as f32) as u32,
-                ((segment_direction.y * (i as f32)) + snake_head_position.y as f32) as u32,
-            ),
-            windows,
-            config,
-            dimensions,
-            theme,
-        )
-    }
-    commands
-        .spawn_bundle(SpriteBundle {
-            material: materials.add(Color::hex(&theme.snake).unwrap_or(MISSING_COLOR).into()),
-            sprite: Sprite::new(Vec2::new(
-                config.grid_scale as f32 * 0.875,
-                config.grid_scale as f32 * 0.875,
-            )),
-            transform: Transform::from_translation(grid_to_vector(
-                &snake_head_position,
-                dimensions,
-            )),
-            ..Default::default()
-        })
-        .insert(snake_head_position)
-        .insert(snake_head);
-    audio.play(audio_assets.spawn_snake.clone_weak());
 }
 
 fn snake_movement_input(
@@ -376,7 +361,7 @@ fn snake_collision_check(
     mut snake_heads: Query<(Entity, &SnakeHead, &GridPosition)>,
     grid_positions: Query<&GridPosition, With<Collidable>>,
     time: Res<Time>,
-    mut respawn_event: ResMut<RespawnEvent>,
+    mut respawn_event: ResMut<Respawn>,
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
     dimensions: Res<GridDimensions>,
@@ -496,10 +481,12 @@ fn despawning(
 }
 
 #[derive(Default)]
-struct RespawnEvent {
+struct Respawn {
     time: f64,
     completed: bool,
 }
+
+struct RespawnEvent;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Direction {
@@ -616,7 +603,7 @@ impl SnakeHead {
         commands: &mut Commands,
         entity: Entity,
         time: &Time,
-        respawn_event: &mut RespawnEvent,
+        respawn_event: &mut Respawn,
         audio_assets: &AudioAssets,
         config: &Config,
     ) {
