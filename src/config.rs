@@ -58,7 +58,7 @@ impl Default for Theme {
             walls: default_theme_color(),
             background: default_theme_color(),
             snake: default_theme_color(),
-            food: vec![default_theme_color()]
+            food: vec![default_theme_color()],
         }
     }
 }
