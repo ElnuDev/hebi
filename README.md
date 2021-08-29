@@ -34,12 +34,13 @@ food_ticks = 8
 | `seed`                           | `u64`    | Random              | Sets what seed should be used for deciding snake spawn locations, food spawn locations, and food colors. Since this is an unsigned number, it must be positive and less than or equal to 18446744073709551615. |
 | `grid_width`                     | `u32`    | 17                  | Sets game grid width, including any walls. For the game to run properly, it must be at least 8 if `corner_walls = false` and at least 10 if `corner_walls = true`. |
 | `grid_height`                    | `u32`    | 13                  | Sets game grid height, including any walls. For the game to run properly, it must be at least 8 if `corner_walls = false` and at least 10 if `corner_walls = true`. |
+| `grid_scale`                     | `u32`    | 36                  | Sets the number of pixels per grid square.                   |
 | `corner_walls`                   | `bool`   | `true`              | Sets whether or not there should be 2×2 corner walls in each corner of the map to make gameplay more more interesting.<br />**⚠️ This is a temporary feature, and will be removed once map customization is added.** |
 | `tick_length`                    | `f64`    | 0.2                 | Sets the amount of time between in-game ticks in seconds. For a more challenging gameplay experience, try setting this to 0.15 or 0.1. For an easier gameplay experience for those with a slow reaction time, try setting this to 0.25 or 0.3. |
 | `food_ticks`                     | `u32`    | 16                  | Sets the number of ticks between each food being spawned.    |
 | `snake_spawn_segments`           | `u32`    | 2                   | Sets the number of segments the snake spawns with, including the head.<br />**💥 Modifying this option from its default value may cause the game to crash.** |
 | `snake_segment_despawn_interval` | `f64`    | 0.1                 | Sets the interval between each segment despawning upon snake death in seconds. You can set this to 0 if you want the entire snake to despawn at once. |
-| `respawn_delay`                  | `f64`    | 0.5                 | Sets the delay in seconds between all segments despawning upon snake death and respawning. |
+| `snake_respawn_delay`            | `f64`    | 0.5                 | Sets the delay in seconds between all segments despawning upon snake death and respawning. |
 | `eat_audio`                      | `String` | `"eat.mp3"`         | Sets the audio file for the destruction of the snake's head and segments. For example, `eat_audio = "munch.mp3"` (fictional file) would load the audio file `assets/sounds/munch.mp3`. |
 | `destroy_audio`                  | `String` | `"destroy.mp3"`     | Sets the audio file for the destruction of the snake's head and segments. |
 | `spawn_food_audio`               | `String` | `"spawn_food.mp3"`  | Sets the audio file for when food is spawned.                |
