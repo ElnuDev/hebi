@@ -235,7 +235,7 @@ fn food_spawn(
 
 fn wall_spawn(
     commands: &mut Commands,
-    materials: &mut ResMut<Assets<ColorMaterial>>,
+    materials: &mut Assets<ColorMaterial>,
     grid_position: GridPosition,
     dimensions: &GridDimensions,
     theme: &Theme,
@@ -244,7 +244,7 @@ fn wall_spawn(
         .spawn_bundle(SpriteBundle {
             material: materials.add(Color::hex(&theme.walls).unwrap_or(MISSING_COLOR).into()),
             sprite: Sprite::new(Vec2::new(dimensions.scale as f32, dimensions.scale as f32)),
-            transform: Transform::from_translation(grid_to_vector(&grid_position, &dimensions)),
+            transform: Transform::from_translation(grid_to_vector(&grid_position, dimensions)),
             ..Default::default()
         })
         .insert(grid_position)
@@ -252,39 +252,10 @@ fn wall_spawn(
 }
 
 fn snake_respawn(
-    commands: Commands,
-    materials: ResMut<Assets<ColorMaterial>>,
-    mut respawn: ResMut<RespawnEvent>,
-    time: Res<Time>,
-    windows: ResMut<Windows>,
-    spawn_positions: Res<SpawnPositions>,
-    audio: Res<Audio>,
-    audio_assets: Res<AudioAssets>,
-    config: Res<Config>,
-    dimensions: Res<GridDimensions>,
-    theme: Res<Theme>,
-    random: ResMut<Random>,
-) {
-    if respawn.time <= time.seconds_since_startup() && !respawn.completed {
-        snake_spawn(
-            commands,
-            materials,
-            windows,
-            spawn_positions,
-            audio,
-            audio_assets,
-            config,
-            dimensions,
-            theme,
-            random,
-        );
-        respawn.completed = true;
-    }
-}
-
-fn snake_spawn(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut respawn: ResMut<RespawnEvent>,
+    time: Res<Time>,
     mut windows: ResMut<Windows>,
     spawn_positions: Res<SpawnPositions>,
     audio: Res<Audio>,
@@ -293,6 +264,35 @@ fn snake_spawn(
     dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
     mut random: ResMut<Random>,
+) {
+    if respawn.time <= time.seconds_since_startup() && !respawn.completed {
+        snake_spawn(
+            &mut commands,
+            &mut materials,
+            &mut windows,
+            &spawn_positions,
+            &audio,
+            &audio_assets,
+            &config,
+            &dimensions,
+            &theme,
+            &mut random,
+        );
+        respawn.completed = true;
+    }
+}
+
+fn snake_spawn(
+    commands: &mut Commands,
+    materials: &mut Assets<ColorMaterial>,
+    windows: &mut Windows,
+    spawn_positions: &SpawnPositions,
+    audio: &Audio,
+    audio_assets: &AudioAssets,
+    config: &Config,
+    dimensions: &GridDimensions,
+    theme: &Theme,
+    random: &mut Random,
 ) {
     let spawn_position = spawn_positions
         .spawn_positions
@@ -304,16 +304,16 @@ fn snake_spawn(
     for i in 1..config.snake_spawn_segments {
         snake_head.spawn_segment(
             None,
-            &mut commands,
-            &mut materials,
+            commands,
+            materials,
             GridPosition::new(
                 ((segment_direction.x * (i as f32)) + snake_head_position.x as f32) as u32,
                 ((segment_direction.y * (i as f32)) + snake_head_position.y as f32) as u32,
             ),
-            &mut windows,
-            &config,
-            &dimensions,
-            &theme,
+            windows,
+            config,
+            dimensions,
+            theme,
         )
     }
     commands
@@ -325,7 +325,7 @@ fn snake_spawn(
             )),
             transform: Transform::from_translation(grid_to_vector(
                 &snake_head_position,
-                &dimensions,
+                dimensions,
             )),
             ..Default::default()
         })
@@ -615,10 +615,10 @@ impl SnakeHead {
         &self,
         commands: &mut Commands,
         entity: Entity,
-        time: &Res<Time>,
-        respawn_event: &mut ResMut<RespawnEvent>,
-        audio_assets: &Res<AudioAssets>,
-        config: &Res<Config>,
+        time: &Time,
+        respawn_event: &mut RespawnEvent,
+        audio_assets: &AudioAssets,
+        config: &Config,
     ) {
         for (i, segment) in self.segments.iter().enumerate() {
             commands
@@ -711,7 +711,7 @@ struct AudioAssets {
 }
 
 impl AudioAssets {
-    fn new(asset_server: &AssetServer, config: &Res<Config>) -> Self {
+    fn new(asset_server: &AssetServer, config: &Config) -> Self {
         let load = |name: &str| asset_server.load(format!("sounds/{}", name).as_str());
         AudioAssets {
             destroy: load(&config.destroy_audio),
