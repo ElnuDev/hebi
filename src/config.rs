@@ -54,15 +54,12 @@ pub struct Theme {
 
 impl Default for Theme {
     fn default() -> Self {
+        const DEFAULT_COLOR: &str = "ff00ff";
         Self {
-            walls: default_theme_color(),
-            background: default_theme_color(),
-            snake: default_theme_color(),
-            food: vec![default_theme_color()],
+            walls: DEFAULT_COLOR.into(),
+            background: DEFAULT_COLOR.into(),
+            snake: DEFAULT_COLOR.into(),
+            food: vec![DEFAULT_COLOR.into()],
         }
     }
-}
-
-fn default_theme_color() -> String {
-    String::from("ff00ff")
 }
