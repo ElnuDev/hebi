@@ -1,15 +1,17 @@
+use std::{collections::HashMap, convert::TryInto};
+
 use rand::prelude::*;
-use serde::Deserialize;
+use serde::{de::Visitor, Deserialize, Deserializer};
+
+use crate::Direction;
 
 #[derive(Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub theme: String,
     pub seed: u64,
-    pub grid_width: u32,
-    pub grid_height: u32,
+    pub map: Map,
     pub grid_scale: u32,
-    pub corner_walls: bool,
     pub tick_length: f64,
     pub food_ticks: u32,
     pub snake_spawn_segments: u32,
@@ -26,10 +28,8 @@ impl Default for Config {
         Self {
             theme: "dracula".into(),
             seed: random(),
-            grid_width: 17,
-            grid_height: 13,
+            map: Default::default(),
             grid_scale: 36,
-            corner_walls: true,
             tick_length: 0.2,
             food_ticks: 16,
             snake_spawn_segments: 2,
@@ -41,6 +41,51 @@ impl Default for Config {
             spawn_snake_audio: "spawn_snake.mp3".into(),
         }
     }
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+pub enum Map {
+    #[serde(rename = "box")]
+    Box {
+        width: u32,
+        height: u32,
+        corner_walls: bool,
+    },
+    #[serde(rename = "custom")]
+    Custom {
+        #[serde(deserialize_with = "deserialize_map_data")]
+        data: MapData,
+    },
+}
+
+impl Default for Map {
+    fn default() -> Self {
+        Self::Box {
+            width: 17,
+            height: 13,
+            corner_walls: true,
+        }
+    }
+}
+
+pub struct MapData {
+    pub width: u32,
+    pub height: u32,
+    cells: HashMap<(u32, u32), Cell>,
+}
+
+impl MapData {
+    pub fn iter(&self) -> impl Iterator<Item = (u32, u32, Cell)> + '_ {
+        self.cells.iter().map(|((x, y), cell)| (*x, *y, *cell))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Cell {
+    Empty,
+    Wall,
+    Spawn(Direction),
 }
 
 #[derive(Deserialize)]
@@ -62,4 +107,68 @@ impl Default for Theme {
             food: vec![DEFAULT_COLOR.into()],
         }
     }
+}
+
+fn deserialize_map_data<'de, D>(deserializer: D) -> Result<MapData, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct MapDataVisitor;
+
+    impl<'de> Visitor<'de> for MapDataVisitor {
+        type Value = MapData;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a multi-line string composed of ' ' and '#'")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            fn to_u32_in_range<E: serde::de::Error>(value: usize, name: &str) -> Result<u32, E> {
+                value
+                    .try_into()
+                    .map_err(|_| E::custom(format!("{} dimension is too big", name)))
+            }
+
+            let mut cells = HashMap::new();
+            let mut width = 0u32;
+            let mut height = 0u32;
+
+            for (row, line) in value.lines().enumerate() {
+                let row = to_u32_in_range(row, "Vertical")?;
+
+                for (column, char) in line.chars().enumerate() {
+                    let column = to_u32_in_range(column, "Horizontal")?;
+
+                    cells.insert(
+                        (column as u32, row as u32),
+                        match char {
+                            '#' => Cell::Wall,
+                            '^' => Cell::Spawn(Direction::Up),
+                            'v' => Cell::Spawn(Direction::Down),
+                            '<' => Cell::Spawn(Direction::Left),
+                            '>' => Cell::Spawn(Direction::Right),
+                            ' ' => Cell::Empty,
+                            other => {
+                                return Err(E::custom(format!("Unknown cell type {:?}", other)))
+                            }
+                        },
+                    );
+
+                    width = width.max(column + 1);
+                    height = height.max(row + 1);
+                }
+            }
+
+            Ok(MapData {
+                width,
+                height,
+                cells,
+            })
+        }
+    }
+
+    deserializer.deserialize_str(MapDataVisitor)
 }

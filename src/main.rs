@@ -25,6 +25,12 @@ struct Random {
     food_spawn_generator: Pcg64,
 }
 
+struct GridDimensions {
+    width: u32,
+    height: u32,
+    scale: u32,
+}
+
 impl Random {
     fn new(config: &Config) -> Self {
         let generator = || Pcg64::seed_from_u64(config.seed);
@@ -56,6 +62,17 @@ fn main() {
     let config: Config = read_toml_file("config.toml");
     let theme: Theme = read_toml_file(&format!("themes/{}.toml", config.theme));
 
+    let (grid_width, grid_height) = {
+        match config.map {
+            Map::Box { width, height, .. } => (width, height),
+            Map::Custom {
+                data: MapData { width, height, .. },
+            } => (width, height),
+        }
+    };
+
+    let grid_scale = config.grid_scale;
+
     App::build()
         .add_startup_system(setup.system())
         .add_system(snake_movement_input.system())
@@ -83,8 +100,8 @@ fn main() {
         .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
         .insert_resource(WindowDescriptor {
             title: TITLE.to_string(),
-            width: (config.grid_width * config.grid_scale) as f32,
-            height: (config.grid_height * config.grid_scale) as f32,
+            width: (grid_width * config.grid_scale) as f32,
+            height: (grid_height * config.grid_scale) as f32,
             resizable: false,
             ..Default::default()
         })
@@ -96,6 +113,11 @@ fn main() {
         .insert_resource(config)
         .insert_resource(theme)
         .add_plugins(DefaultPlugins)
+        .insert_resource(GridDimensions {
+            width: grid_width,
+            height: grid_height,
+            scale: grid_scale,
+        })
         .run();
 }
 
@@ -104,6 +126,7 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
     config: Res<Config>,
+    dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
 ) {
     commands.insert_resource(AudioAssets::new(&asset_server, &config));
@@ -114,44 +137,10 @@ fn setup(
             &mut commands,
             &mut materials,
             GridPosition::new(x, y),
-            &config,
+            &dimensions,
             &theme,
         )
     };
-    for x in 0..config.grid_width {
-        wall(x, 0);
-        wall(x, config.grid_height - 1);
-    }
-    for y in 1..config.grid_height - 1 {
-        wall(0, y);
-        wall(config.grid_width - 1, y);
-    }
-
-    if config.corner_walls {
-        // Bottom-left wall block
-        wall(2, 2);
-        wall(3, 2);
-        wall(2, 3);
-        wall(3, 3);
-
-        // Top-left wall block
-        wall(2, config.grid_height - 4);
-        wall(3, config.grid_height - 4);
-        wall(2, config.grid_height - 3);
-        wall(3, config.grid_height - 3);
-
-        // Bottom-right wall block
-        wall(config.grid_width - 4, 2);
-        wall(config.grid_width - 3, 2);
-        wall(config.grid_width - 4, 3);
-        wall(config.grid_width - 3, 3);
-
-        // Top-right wall block
-        wall(config.grid_width - 4, config.grid_height - 4);
-        wall(config.grid_width - 3, config.grid_height - 4);
-        wall(config.grid_width - 4, config.grid_height - 3);
-        wall(config.grid_width - 3, config.grid_height - 3);
-    }
 
     let mut spawn_positions = SpawnPositions::default();
     let mut spawn = |x, y, direction| {
@@ -160,48 +149,96 @@ fn setup(
             .push(SpawnPosition::new(GridPosition::new(x, y), direction));
     };
 
-    // Bottom-left spawn
-    spawn(5, 5, Direction::Right);
-    spawn(5, 5, Direction::Up);
+    match &config.map {
+        Map::Box {
+            width,
+            height,
+            corner_walls,
+        } => {
+            for x in 0..*width {
+                wall(x, 0);
+                wall(x, height - 1);
+            }
+            for y in 1..height - 1 {
+                wall(0, y);
+                wall(width - 1, y);
+            }
 
-    // Top-left spawn
-    spawn(5, config.grid_height - 6, Direction::Right);
-    spawn(5, config.grid_height - 6, Direction::Down);
+            if *corner_walls {
+                // Bottom-left wall block
+                wall(2, 2);
+                wall(3, 2);
+                wall(2, 3);
+                wall(3, 3);
 
-    // Bottom-right spaw
-    spawn(config.grid_width - 6, 5, Direction::Left);
-    spawn(config.grid_width - 6, 5, Direction::Up);
+                // Top-left wall block
+                wall(2, height - 4);
+                wall(3, height - 4);
+                wall(2, height - 3);
+                wall(3, height - 3);
 
-    // Top-right spawn
-    spawn(
-        config.grid_width - 6,
-        config.grid_height - 6,
-        Direction::Left,
-    );
-    spawn(
-        config.grid_width - 6,
-        config.grid_height - 6,
-        Direction::Down,
-    );
+                // Bottom-right wall block
+                wall(width - 4, 2);
+                wall(width - 3, 2);
+                wall(width - 4, 3);
+                wall(width - 3, 3);
+
+                // Top-right wall block
+                wall(width - 4, height - 4);
+                wall(width - 3, height - 4);
+                wall(width - 4, height - 3);
+                wall(width - 3, height - 3);
+            }
+
+            // Bottom-left spawn
+            spawn(5, 5, Direction::Right);
+            spawn(5, 5, Direction::Up);
+
+            // Top-left spawn
+            spawn(5, height - 6, Direction::Right);
+            spawn(5, height - 6, Direction::Down);
+
+            // Bottom-right spaw
+            spawn(width - 6, 5, Direction::Left);
+            spawn(width - 6, 5, Direction::Up);
+
+            // Top-right spawn
+            spawn(width - 6, height - 6, Direction::Left);
+            spawn(width - 6, height - 6, Direction::Down);
+        }
+        Map::Custom { data } => {
+            let top = data.height - 1;
+            for (x, y, cell) in data.iter() {
+                match cell {
+                    Cell::Empty => {},
+                    Cell::Wall => wall(x, top - y),
+                    Cell::Spawn(direction) => spawn(x, top - y, direction),
+                }
+            }
+        }
+    };
 
     commands.insert_resource(spawn_positions);
 }
 
-fn grid_positioning(mut query: Query<(&GridPosition, &mut Transform)>, config: Res<Config>) {
+fn grid_positioning(
+    mut query: Query<(&GridPosition, &mut Transform)>,
+    dimensions: Res<GridDimensions>,
+) {
     for (grid_position, mut transform) in query.iter_mut() {
         transform.translation = transform.translation.lerp(
-            grid_to_vector(grid_position, &config),
+            grid_to_vector(grid_position, &dimensions),
             grid_position.t.unwrap_or(1.0),
         );
     }
 }
 
-fn grid_to_vector(grid_position: &GridPosition, config: &Res<Config>) -> Vec3 {
+fn grid_to_vector(grid_position: &GridPosition, dimensions: &GridDimensions) -> Vec3 {
     Vec3::new(
-        (grid_position.x as f32 - config.grid_width as f32 / 2.0) * config.grid_scale as f32
-            + config.grid_scale as f32 / 2.0,
-        (grid_position.y as f32 - config.grid_height as f32 / 2.0) * config.grid_scale as f32
-            + config.grid_scale as f32 / 2.0,
+        (grid_position.x as f32 - dimensions.width as f32 / 2.0) * dimensions.scale as f32
+            + dimensions.scale as f32 / 2.0,
+        (grid_position.y as f32 - dimensions.height as f32 / 2.0) * dimensions.scale as f32
+            + dimensions.scale as f32 / 2.0,
         0.0,
     )
 }
@@ -212,19 +249,19 @@ fn food_spawn(
     grid_positions: Query<&GridPosition>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
-    config: Res<Config>,
+    dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
     mut random: ResMut<Random>,
 ) {
     // Return and spawn no food if there are no available grid positions (entire grid full)
-    if grid_positions.iter().len() >= (config.grid_width * config.grid_height) as usize {
+    if grid_positions.iter().len() >= (dimensions.width * dimensions.height) as usize {
         return;
     }
     // This will prevent an infinite loop here:
     let grid_position = 'outer: loop {
         let possible_grid_position = GridPosition::new(
-            random.snake_spawn_generator.next_u32() % config.grid_width,
-            random.snake_spawn_generator.next_u32() % config.grid_height,
+            random.snake_spawn_generator.next_u32() % dimensions.width,
+            random.snake_spawn_generator.next_u32() % dimensions.height,
         );
         for exisiting_grid_position in grid_positions.iter() {
             if exisiting_grid_position.x == possible_grid_position.x
@@ -243,10 +280,10 @@ fn food_spawn(
                     .into(),
             ),
             sprite: Sprite::new(Vec2::new(
-                config.grid_scale as f32 * 0.875,
-                config.grid_scale as f32 * 0.875,
+                dimensions.scale as f32 * 0.875,
+                dimensions.scale as f32 * 0.875,
             )),
-            transform: Transform::from_translation(grid_to_vector(&grid_position, &config)),
+            transform: Transform::from_translation(grid_to_vector(&grid_position, &dimensions)),
             ..Default::default()
         })
         .insert(grid_position)
@@ -258,17 +295,14 @@ fn wall_spawn(
     commands: &mut Commands,
     materials: &mut ResMut<Assets<ColorMaterial>>,
     grid_position: GridPosition,
-    config: &Res<Config>,
-    theme: &Res<Theme>,
+    dimensions: &GridDimensions,
+    theme: &Theme,
 ) {
     commands
         .spawn_bundle(SpriteBundle {
             material: materials.add(Color::hex(&theme.walls).unwrap_or(MISSING_COLOR).into()),
-            sprite: Sprite::new(Vec2::new(
-                config.grid_scale as f32,
-                config.grid_scale as f32,
-            )),
-            transform: Transform::from_translation(grid_to_vector(&grid_position, &config)),
+            sprite: Sprite::new(Vec2::new(dimensions.scale as f32, dimensions.scale as f32)),
+            transform: Transform::from_translation(grid_to_vector(&grid_position, &dimensions)),
             ..Default::default()
         })
         .insert(grid_position)
@@ -285,6 +319,7 @@ fn snake_respawn(
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
+    dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
     random: ResMut<Random>,
 ) {
@@ -297,6 +332,7 @@ fn snake_respawn(
             audio,
             audio_assets,
             config,
+            dimensions,
             theme,
             random,
         );
@@ -312,6 +348,7 @@ fn snake_spawn(
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
+    dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
     mut random: ResMut<Random>,
 ) {
@@ -333,6 +370,7 @@ fn snake_spawn(
             ),
             &mut windows,
             &config,
+            &dimensions,
             &theme,
         )
     }
@@ -343,7 +381,10 @@ fn snake_spawn(
                 config.grid_scale as f32 * 0.875,
                 config.grid_scale as f32 * 0.875,
             )),
-            transform: Transform::from_translation(grid_to_vector(&snake_head_position, &config)),
+            transform: Transform::from_translation(grid_to_vector(
+                &snake_head_position,
+                &dimensions,
+            )),
             ..Default::default()
         })
         .insert(snake_head_position)
@@ -396,6 +437,7 @@ fn snake_collision_check(
     mut respawn_event: ResMut<RespawnEvent>,
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
+    dimensions: Res<GridDimensions>,
 ) {
     for (snake_head_entity, snake_head, snake_head_position) in snake_heads.iter_mut() {
         let mut despawn = || {
@@ -410,8 +452,7 @@ fn snake_collision_check(
         };
         // It is unnecessary to check if the x- or y-positions are less than 0
         // since this is impossible for the unsigned integers that they are stored in
-        if snake_head_position.x >= config.grid_width || snake_head_position.y >= config.grid_height
-        {
+        if snake_head_position.x >= dimensions.width || snake_head_position.y >= dimensions.height {
             despawn();
         }
         for segment in snake_head.segments.iter() {
@@ -443,6 +484,7 @@ fn snake_eating(
     mut windows: ResMut<Windows>,
     audio_assets: Res<AudioAssets>,
     config: Res<Config>,
+    dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
 ) {
     for (mut snake_head, snake_head_grid_position) in snake_heads.iter_mut() {
@@ -465,6 +507,7 @@ fn snake_eating(
                     snake_head_grid_position.clone(),
                     &mut windows,
                     &config,
+                    &dimensions,
                     &theme,
                 );
             }
@@ -517,7 +560,7 @@ struct RespawnEvent {
 }
 
 #[derive(PartialEq, Copy, Clone)]
-enum Direction {
+pub enum Direction {
     Left,
     Right,
     Down,
@@ -561,11 +604,12 @@ impl SnakeHead {
         &mut self,
         index: Option<usize>,
         commands: &mut Commands,
-        materials: &mut ResMut<Assets<ColorMaterial>>,
+        materials: &mut Assets<ColorMaterial>,
         grid_position: GridPosition,
-        windows: &mut ResMut<Windows>,
-        config: &Res<Config>,
-        theme: &Res<Theme>,
+        windows: &mut Windows,
+        config: &Config,
+        dimensions: &GridDimensions,
+        theme: &Theme,
     ) {
         self.segments.insert(
             match index {
@@ -580,7 +624,10 @@ impl SnakeHead {
                         config.grid_scale as f32 * 0.75,
                         config.grid_scale as f32 * 0.75,
                     )),
-                    transform: Transform::from_translation(grid_to_vector(&grid_position, config)),
+                    transform: Transform::from_translation(grid_to_vector(
+                        &grid_position,
+                        dimensions,
+                    )),
                     ..Default::default()
                 })
                 .insert(SnakeSegment)
