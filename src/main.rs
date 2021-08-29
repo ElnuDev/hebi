@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rand_pcg::Pcg64;
+use serde::de::DeserializeOwned;
 use std::fs;
 
 const TITLE: &str = "Hebi";
@@ -35,16 +36,25 @@ impl Random {
 }
 
 fn main() {
-    let config: Config =
-        toml::from_str(&fs::read_to_string("config.toml").unwrap_or_else(|_| "".to_string()))
-            .expect("Something went wrong parsing the config file!");
-    let theme: Theme = toml::from_str(
-        &fs::read_to_string(format!("themes/{}.toml", config.theme)).unwrap_or_else(|_| {
-            println!("Missing theme file. Colors will be missing.");
-            "".to_string()
-        }),
-    )
-    .expect("Something went wrong parsing the theme file!");
+    fn read_toml_file<T: DeserializeOwned + Default>(path: &str) -> T {
+        let result = fs::read_to_string(path)
+            .map_err(|error| format!("Failed to load {:?}: {}", path, error))
+            .and_then(|contents| {
+                toml::from_str(&contents)
+                    .map_err(|error| format!("Failed to parse {:?}: {}", path, error))
+            });
+
+        match result {
+            Ok(value) => value,
+            Err(error) => {
+                eprintln!("{}", error);
+                Default::default()
+            }
+        }
+    }
+
+    let config: Config = read_toml_file("config.toml");
+    let theme: Theme = read_toml_file(&format!("themes/{}.toml", config.theme));
 
     App::build()
         .add_startup_system(setup.system())
