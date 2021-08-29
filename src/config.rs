@@ -1,6 +1,7 @@
 use std::{collections::HashMap, convert::TryInto};
 
 use rand::prelude::*;
+use rand_pcg::Pcg64;
 use serde::{de::Visitor, Deserialize, Deserializer};
 
 use crate::Direction;
@@ -51,7 +52,7 @@ pub enum Map {
         width: u32,
         height: u32,
         corner_walls: u32,
-        corner_walls_offset: u32,
+        corner_walls_offset: i32,
     },
     #[serde(rename = "corridors")]
     Corridors {
@@ -59,6 +60,9 @@ pub enum Map {
         height: u32,
         corridor_width: u32,
         corridor_height: u32,
+        top_corridor_offset: i32,
+        bottom_corridor_offset: i32,
+        wall_variance: f32,
     },
     #[serde(rename = "custom")]
     Custom {
@@ -79,7 +83,7 @@ impl Default for Map {
 }
 
 impl Map {
-    pub fn get_map_data(&self) -> MapData {
+    pub fn get_map_data(&self, generator: &mut Pcg64) -> MapData {
         match self {
             Self::Box {
                 width,
@@ -91,6 +95,7 @@ impl Map {
                 height: *height,
                 cells: {
                     let mut cells = HashMap::new();
+                    let corner_walls_offset = *corner_walls_offset as u32;
                     for x in 0..*width {
                         for y in 0..*height {
                             cells.insert((x, y), {
@@ -99,14 +104,14 @@ impl Map {
                                     || y == 0
                                     || y == height - 1
                                     // Bottom-left corner wall
-                                    || (x >= *corner_walls_offset
+                                    || (x >= corner_walls_offset
                                         && x < corner_walls_offset + corner_walls
                                         && y >= height - corner_walls_offset - corner_walls
                                         && y < height - corner_walls_offset)
                                     // Top-left corner wall
-                                    || (x >= *corner_walls_offset
+                                    || (x >= corner_walls_offset
                                         && x < corner_walls_offset + corner_walls
-                                        && y >= *corner_walls_offset
+                                        && y >= corner_walls_offset
                                         && y < corner_walls_offset + corner_walls)
                                     // Bottom-right corner wall
                                     || (x >= width - corner_walls_offset - corner_walls
@@ -116,7 +121,7 @@ impl Map {
                                     // Top-right corner wall
                                     || (x >= width - corner_walls_offset - corner_walls
                                         && x < width - corner_walls_offset
-                                        && y >= *corner_walls_offset
+                                        && y >= corner_walls_offset
                                         && y < corner_walls_offset + corner_walls)
                                 {
                                     Cell::Wall
@@ -138,11 +143,25 @@ impl Map {
                 height,
                 corridor_width,
                 corridor_height,
+                top_corridor_offset,
+                bottom_corridor_offset,
+                wall_variance,
             } => MapData {
                 width: *width,
                 height: *height,
                 cells: {
                     let mut cells = HashMap::new();
+                    let corridor_width = *corridor_width as u32;
+                    let mut top_wall_heights = HashMap::<u32, u32>::new();
+                    let mut bottom_wall_heights = HashMap::<u32, u32>::new();
+                    let mut get_wall_height = |hash_map: &mut HashMap<u32, u32>, x: u32| {
+                        *hash_map.entry(x).or_insert_with(|| {
+                            let corridor_height = *corridor_height as f32;
+                            (corridor_height * (1.0 - wall_variance)
+                                + corridor_height * wall_variance * generator.gen::<f32>())
+                                as u32
+                        })
+                    };
                     for x in 0..*width {
                         for y in 0..*height {
                             cells.insert((x, y), {
@@ -154,10 +173,20 @@ impl Map {
                                     || x == width - 1
                                     || y == 0
                                     || y == height - 1
-                                    || (x % (corridor_width + 1) == 0
-                                        && x < width - corridor_width - 1 // -1 because single-width coordiors are dead ends
-                                        && (y < *corridor_height + 1
-                                        || y > height - corridor_height - 2))
+                                    || ((x as i32 - top_corridor_offset)
+                                        % (corridor_width as i32 + 1)
+                                        == 0
+                                        && x > 2
+                                        && x < width - corridor_width - 1
+                                        && y < get_wall_height(&mut top_wall_heights, x) + 1)
+                                    || ((x as i32 - bottom_corridor_offset)
+                                        % (corridor_width as i32 + 1)
+                                        == 0
+                                        && x > 2
+                                        && x < width - corridor_width - 1
+                                        && y > height
+                                            - get_wall_height(&mut bottom_wall_heights, x)
+                                            - 2)
                                 {
                                     Cell::Wall
                                 } else {

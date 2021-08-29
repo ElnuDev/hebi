@@ -20,15 +20,16 @@ enum Labels {
     Respawning,
 }
 
-struct Random {
-    snake_spawn_generator: Pcg64,
-    food_spawn_generator: Pcg64,
-}
-
 struct GridDimensions {
     width: u32,
     height: u32,
     scale: u32,
+}
+
+struct Random {
+    snake_spawn_generator: Pcg64,
+    food_spawn_generator: Pcg64,
+    environment_generator: Pcg64,
 }
 
 impl Random {
@@ -37,6 +38,7 @@ impl Random {
         Random {
             snake_spawn_generator: generator(),
             food_spawn_generator: generator(),
+            environment_generator: generator(),
         }
     }
 }
@@ -131,6 +133,7 @@ fn setup(
     config: Res<Config>,
     dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
+    mut random: ResMut<Random>,
 ) {
     commands.insert_resource(AudioAssets::new(&asset_server, &config));
 
@@ -152,7 +155,7 @@ fn setup(
             .push(SpawnPosition::new(GridPosition::new(x, y), direction));
     };
 
-    let map_data = config.map.get_map_data();
+    let map_data = config.map.get_map_data(&mut random.environment_generator);
     let top = map_data.height - 1;
     for (x, y, cell) in map_data.iter() {
         match cell {
