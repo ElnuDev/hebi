@@ -222,6 +222,7 @@ impl Map {
                         cells.insert((x - 1, y), Cell::Empty);
                         cells.insert((x, y), Cell::Empty);
                         cells.insert((x + 1, y), Cell::Empty);
+                        cells.insert((x + 1, height - 3), Cell::Spawn(Direction::Up));
                     }
                     for (x, wall_height) in top_wall_heights.iter() {
                         let x = *x as u32;
@@ -232,9 +233,8 @@ impl Map {
                         cells.insert((x - 1, y), Cell::Empty);
                         cells.insert((x, y), Cell::Empty);
                         cells.insert((x + 1, y), Cell::Empty);
+                        cells.insert((x + 1, 2), Cell::Spawn(Direction::Down));
                     }
-                    cells.insert((width / 2 - 1, height / 2), Cell::Spawn(Direction::Left));
-                    cells.insert((width / 2 + 1, height / 2), Cell::Spawn(Direction::Right));
                     cells
                 },
             },
