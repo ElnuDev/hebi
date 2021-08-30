@@ -154,20 +154,24 @@ impl Map {
                     let corridor_width = *corridor_width as u32;
                     let mut top_wall_heights = HashMap::<u32, u32>::new();
                     let mut bottom_wall_heights = HashMap::<u32, u32>::new();
-                    let mut get_wall_height = |hash_map: &mut HashMap<u32, u32>, x: u32| {
-                        *hash_map.entry(x).or_insert_with(|| {
-                            let corridor_height = *corridor_height as f32;
-                            (corridor_height * (1.0 - wall_variance)
-                                + corridor_height * wall_variance * generator.gen::<f32>())
-                                as u32
-                        })
-                    };
+                    let get_wall_height =
+                        |hash_map: &mut HashMap<u32, u32>, generator: &mut Pcg64, x: u32| {
+                            *hash_map.entry(x).or_insert_with(|| {
+                                let corridor_height = *corridor_height as f32;
+                                (corridor_height * (1.0 - wall_variance)
+                                    + corridor_height * wall_variance * generator.gen::<f32>())
+                                    as u32
+                            })
+                        };
                     for x in 0..*width {
+                        let mut blocked = true;
                         for y in 0..*height {
                             cells.insert((x, y), {
                                 if x == width / 2 - 1 && y == height / 2 {
+                                    blocked = false;
                                     Cell::Spawn(Direction::Left)
                                 } else if x == width / 2 + 1 && y == height / 2 {
+                                    blocked = false;
                                     Cell::Spawn(Direction::Right)
                                 } else if x == 0
                                     || x == width - 1
@@ -178,21 +182,32 @@ impl Map {
                                         == 0
                                         && x > 2
                                         && x < width - corridor_width - 1
-                                        && y < get_wall_height(&mut top_wall_heights, x) + 1)
+                                        && y < get_wall_height(&mut top_wall_heights, generator, x)
+                                            + 1)
                                     || ((x as i32 - bottom_corridor_offset)
                                         % (corridor_width as i32 + 1)
                                         == 0
                                         && x > 2
                                         && x < width - corridor_width - 1
                                         && y > height
-                                            - get_wall_height(&mut bottom_wall_heights, x)
+                                            - get_wall_height(
+                                                &mut bottom_wall_heights,
+                                                generator,
+                                                x,
+                                            )
                                             - 2)
                                 {
                                     Cell::Wall
                                 } else {
+                                    blocked = false;
                                     Cell::Empty
                                 }
                             });
+                        }
+                        // Check for blocked columns
+                        if blocked && x > 0 && x < width - 1 {
+                            let gap = generator.gen_range(1..(height - 1));
+                            cells.insert((x, gap), Cell::Empty);
                         }
                     }
                     cells
