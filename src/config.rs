@@ -170,11 +170,7 @@ impl Map {
                         blocked = true;
                         for y in 0..*height {
                             cells.insert((x, y), {
-                                if x == width / 2 - 1 && y == height / 2 {
-                                    Cell::Spawn(Direction::Left)
-                                } else if x == width / 2 + 1 && y == height / 2 {
-                                    Cell::Spawn(Direction::Right)
-                                } else if x == 0
+                                if x == 0
                                     || x == width - 1
                                     || y == 0
                                     || y == height - 1
@@ -217,6 +213,28 @@ impl Map {
                             cells.insert((x, gap), Cell::Empty);
                         }
                     }
+                    for (x, wall_height) in bottom_wall_heights.iter() {
+                        let x = *x as u32;
+                        let y = (*height as i32 - *wall_height as i32 - 2) as u32;
+                        if y == 0 || y == height - 1 {
+                            continue;
+                        }
+                        cells.insert((x - 1, y), Cell::Empty);
+                        cells.insert((x, y), Cell::Empty);
+                        cells.insert((x + 1, y), Cell::Empty);
+                    }
+                    for (x, wall_height) in top_wall_heights.iter() {
+                        let x = *x as u32;
+                        let y = (wall_height + 1) as u32;
+                        if y == 0 || y == height - 1 {
+                            continue;
+                        }
+                        cells.insert((x - 1, y), Cell::Empty);
+                        cells.insert((x, y), Cell::Empty);
+                        cells.insert((x + 1, y), Cell::Empty);
+                    }
+                    cells.insert((width / 2 - 1, height / 2), Cell::Spawn(Direction::Left));
+                    cells.insert((width / 2 + 1, height / 2), Cell::Spawn(Direction::Right));
                     cells
                 },
             },
