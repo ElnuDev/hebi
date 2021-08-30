@@ -163,15 +163,16 @@ impl Map {
                                     as u32
                             })
                         };
+                    let mut gap = 1;
+                    let mut blocked = false;
                     for x in 0..*width {
-                        let mut blocked = true;
+                        let previously_blocked = blocked;
+                        blocked = true;
                         for y in 0..*height {
                             cells.insert((x, y), {
                                 if x == width / 2 - 1 && y == height / 2 {
-                                    blocked = false;
                                     Cell::Spawn(Direction::Left)
                                 } else if x == width / 2 + 1 && y == height / 2 {
-                                    blocked = false;
                                     Cell::Spawn(Direction::Right)
                                 } else if x == 0
                                     || x == width - 1
@@ -210,7 +211,9 @@ impl Map {
                         }
                         // Check for blocked columns
                         if blocked && x > 0 && x < width - 1 {
-                            let gap = generator.gen_range(1..(height - 1));
+                            if !previously_blocked {
+                                gap = generator.gen_range(1..(height - 1));
+                            }
                             cells.insert((x, gap), Cell::Empty);
                         }
                     }
