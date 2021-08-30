@@ -19,7 +19,7 @@
 
 - [x] Prevent food from spawning on top of any already occupied grid position
 - [x] Add respawn delay that waits for destroy animation to finish
-- [ ] Add maps
+- [x] Add maps
 - [ ] Add wraparound
 - [ ] Add powerups/hazards
 	- [ ] Drill (triangle head, able to go through three(?) walls)
