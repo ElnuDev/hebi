@@ -65,12 +65,10 @@ fn main() {
     let theme: Theme = read_toml_file(&format!("themes/{}.toml", config.theme));
 
     let (grid_width, grid_height) = {
-        match config.map {
-            Map::Box { width, height, .. } => (width, height),
-            Map::Corridors { width, height, .. } => (width, height),
-            Map::Custom {
-                data: MapData { width, height, .. },
-            } => (width, height),
+        match &config.map {
+            Map::Box(box_map) => (box_map.width, box_map.height),
+            Map::Corridors(corridors_map) => (corridors_map.width, corridors_map.height),
+            Map::Custom(custom_map) => (custom_map.data.width, custom_map.data.height),
         }
     };
 
