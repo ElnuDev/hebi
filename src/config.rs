@@ -1,10 +1,9 @@
-use std::{collections::HashMap, convert::TryInto};
+use crate::{maps::*, Direction};
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
-use serde::{de::Visitor, Deserialize, Deserializer};
-
-use crate::Direction;
+use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Deserialize)]
 #[serde(default)]
@@ -47,8 +46,8 @@ impl Default for Config {
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 pub enum Map {
-    #[serde(rename = "box")]
-    Box(BoxMap),
+    #[serde(rename = "default")]
+    Default(DefaultMap),
 
     #[serde(rename = "corridors")]
     Corridors(CorridorsMap),
@@ -59,225 +58,16 @@ pub enum Map {
 
 impl Default for Map {
     fn default() -> Self {
-        Self::Box(BoxMap::default())
+        Self::Default(Default::default())
     }
-}
-
-#[derive(Deserialize)]
-#[serde(default)]
-pub struct BoxMap {
-    pub width: u32,
-    pub height: u32,
-    corner_walls: u32,
-    corner_walls_offset: i32,
-}
-
-impl Default for BoxMap {
-    fn default() -> Self {
-        Self {
-            width: 17,
-            height: 13,
-            corner_walls: 2,
-            corner_walls_offset: 2,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(default)]
-pub struct CorridorsMap {
-    pub width: u32,
-    pub height: u32,
-    corridor_width: u32,
-    corridor_height: u32,
-    top_corridor_offset: i32,
-    bottom_corridor_offset: i32,
-    wall_variance: f32,
-}
-
-impl Default for CorridorsMap {
-    fn default() -> Self {
-        Self {
-            width: 34,
-            height: 17,
-            corridor_width: 3,
-            corridor_height: 10,
-            top_corridor_offset: 3,
-            bottom_corridor_offset: 0,
-            wall_variance: 0.5,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-pub struct CustomMap {
-    #[serde(deserialize_with = "deserialize_map_data")]
-    pub data: MapData,
 }
 
 impl Map {
     pub fn get_map_data(&self, generator: &mut Pcg64) -> MapData {
         match self {
-            Self::Box(box_map) => {
-                let width = box_map.width;
-                let height = box_map.height;
-                let corner_walls = box_map.corner_walls;
-                let corner_walls_offset = box_map.corner_walls_offset;
-                MapData {
-                    width,
-                    height,
-                    cells: {
-                        let mut cells = HashMap::new();
-                        let corner_walls_offset = corner_walls_offset as u32;
-                        for x in 0..width {
-                            for y in 0..height {
-                                cells.insert((x, y), {
-                                    if x == 0
-                                        || x == width - 1
-                                        || y == 0
-                                        || y == height - 1
-                                        // Bottom-left corner wall
-                                        || (x >= corner_walls_offset
-                                            && x < corner_walls_offset + corner_walls
-                                            && y >= height - corner_walls_offset - corner_walls
-                                            && y < height - corner_walls_offset)
-                                        // Top-left corner wall
-                                        || (x >= corner_walls_offset
-                                            && x < corner_walls_offset + corner_walls
-                                            && y >= corner_walls_offset
-                                            && y < corner_walls_offset + corner_walls)
-                                        // Bottom-right corner wall
-                                        || (x >= width - corner_walls_offset - corner_walls
-                                            && x < width - corner_walls_offset
-                                            && y >= height - corner_walls_offset - corner_walls
-                                            && y < height - corner_walls_offset)
-                                        // Top-right corner wall
-                                        || (x >= width - corner_walls_offset - corner_walls
-                                            && x < width - corner_walls_offset
-                                            && y >= corner_walls_offset
-                                            && y < corner_walls_offset + corner_walls)
-                                    {
-                                        Cell::Wall
-                                    } else if x == width / 2 - 1 && y == height / 2 {
-                                        Cell::Spawn(Direction::Left)
-                                    } else if x == width / 2 + 1 && y == height / 2 {
-                                        Cell::Spawn(Direction::Right)
-                                    } else {
-                                        Cell::Empty
-                                    }
-                                });
-                            }
-                        }
-                        cells
-                    },
-                }
-            }
-            Self::Corridors(corridors_map) => {
-                let width = corridors_map.width;
-                let height = corridors_map.height;
-                let corridor_width = corridors_map.corridor_width;
-                let corridor_height = corridors_map.corridor_height;
-                let top_corridor_offset = corridors_map.top_corridor_offset;
-                let bottom_corridor_offset = corridors_map.bottom_corridor_offset;
-                let wall_variance = corridors_map.wall_variance;
-                MapData {
-                    width,
-                    height,
-                    cells: {
-                        let mut cells = HashMap::new();
-                        let corridor_width = corridor_width as u32;
-                        let mut top_wall_heights = HashMap::<u32, u32>::new();
-                        let mut bottom_wall_heights = HashMap::<u32, u32>::new();
-                        let get_wall_height =
-                            |hash_map: &mut HashMap<u32, u32>, generator: &mut Pcg64, x: u32| {
-                                *hash_map.entry(x).or_insert_with(|| {
-                                    let corridor_height = corridor_height as f32;
-                                    (corridor_height * (1.0 - wall_variance)
-                                        + corridor_height * wall_variance * generator.gen::<f32>())
-                                        as u32
-                                })
-                            };
-                        let mut gap = 1;
-                        let mut blocked = false;
-                        for x in 0..width {
-                            let previously_blocked = blocked;
-                            blocked = true;
-                            for y in 0..height {
-                                cells.insert((x, y), {
-                                    if x == 0
-                                        || x == width - 1
-                                        || y == 0
-                                        || y == height - 1
-                                        || ((x as i32 - top_corridor_offset)
-                                            % (corridor_width as i32 + 1)
-                                            == 0
-                                            && x > 2
-                                            && x < width - corridor_width - 1
-                                            && (y as i32)
-                                                < get_wall_height(
-                                                    &mut top_wall_heights,
-                                                    generator,
-                                                    x,
-                                                )
-                                                    as i32
-                                                    + 1)
-                                        || ((x as i32 - bottom_corridor_offset)
-                                            % (corridor_width as i32 + 1)
-                                            == 0
-                                            && x > 2
-                                            && x < width - corridor_width - 1
-                                            && y as i32
-                                                > (height as i32
-                                                    - get_wall_height(
-                                                        &mut bottom_wall_heights,
-                                                        generator,
-                                                        x,
-                                                    )
-                                                        as i32
-                                                    - 2))
-                                    {
-                                        Cell::Wall
-                                    } else {
-                                        blocked = false;
-                                        Cell::Empty
-                                    }
-                                });
-                            }
-                            // Check for blocked columns
-                            if blocked && x > 0 && x < width - 1 {
-                                if !previously_blocked {
-                                    gap = generator.gen_range(1..(height - 1));
-                                }
-                                cells.insert((x, gap), Cell::Empty);
-                            }
-                        }
-                        for (x, wall_height) in bottom_wall_heights.iter() {
-                            let x = *x as u32;
-                            let y = (height as i32 - *wall_height as i32 - 2) as u32;
-                            if y == 0 || y == height - 1 {
-                                continue;
-                            }
-                            cells.insert((x - 1, y), Cell::Empty);
-                            cells.insert((x, y), Cell::Empty);
-                            cells.insert((x + 1, y), Cell::Empty);
-                            cells.insert((x + 1, height - 3), Cell::Spawn(Direction::Up));
-                        }
-                        for (x, wall_height) in top_wall_heights.iter() {
-                            let x = *x as u32;
-                            let y = (wall_height + 1) as u32;
-                            if y == 0 || y == height - 1 {
-                                continue;
-                            }
-                            cells.insert((x - 1, y), Cell::Empty);
-                            cells.insert((x, y), Cell::Empty);
-                            cells.insert((x + 1, y), Cell::Empty);
-                            cells.insert((x + 1, 2), Cell::Spawn(Direction::Down));
-                        }
-                        cells
-                    },
-                }
-            }
-            Self::Custom(custom_map) => custom_map.data.clone(),
+            Self::Default(box_map) => box_map.get_map_data(generator),
+            Self::Corridors(corridors_map) => corridors_map.get_map_data(generator),
+            Self::Custom(custom_map) => custom_map.get_map_data(generator),
         }
     }
 }
@@ -286,7 +76,7 @@ impl Map {
 pub struct MapData {
     pub width: u32,
     pub height: u32,
-    cells: HashMap<(u32, u32), Cell>,
+    pub cells: HashMap<(u32, u32), Cell>,
 }
 
 impl MapData {
@@ -323,66 +113,6 @@ impl Default for Theme {
     }
 }
 
-fn deserialize_map_data<'de, D>(deserializer: D) -> Result<MapData, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct MapDataVisitor;
-
-    impl<'de> Visitor<'de> for MapDataVisitor {
-        type Value = MapData;
-
-        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-            formatter.write_str("a multi-line string composed of ' ' and '#'")
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error,
-        {
-            fn to_u32_in_range<E: serde::de::Error>(value: usize, name: &str) -> Result<u32, E> {
-                value
-                    .try_into()
-                    .map_err(|_| E::custom(format!("{} dimension is too big", name)))
-            }
-
-            let mut cells = HashMap::new();
-            let mut width = 0u32;
-            let mut height = 0u32;
-
-            for (row, line) in value.lines().enumerate() {
-                let row = to_u32_in_range(row, "Vertical")?;
-
-                for (column, char) in line.chars().enumerate() {
-                    let column = to_u32_in_range(column, "Horizontal")?;
-
-                    cells.insert(
-                        (column as u32, row as u32),
-                        match char {
-                            '#' => Cell::Wall,
-                            '^' => Cell::Spawn(Direction::Up),
-                            'v' => Cell::Spawn(Direction::Down),
-                            '<' => Cell::Spawn(Direction::Left),
-                            '>' => Cell::Spawn(Direction::Right),
-                            ' ' => Cell::Empty,
-                            other => {
-                                return Err(E::custom(format!("Unknown cell type {:?}", other)))
-                            }
-                        },
-                    );
-
-                    width = width.max(column + 1);
-                    height = height.max(row + 1);
-                }
-            }
-
-            Ok(MapData {
-                width,
-                height,
-                cells,
-            })
-        }
-    }
-
-    deserializer.deserialize_str(MapDataVisitor)
+pub trait MapType {
+    fn get_map_data(&self, generator: &mut Pcg64) -> MapData;
 }

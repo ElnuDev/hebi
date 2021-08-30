@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod config;
+mod maps;
 
 use crate::config::*;
 use bevy::core::FixedTimestep;
@@ -66,7 +67,7 @@ fn main() {
 
     let (grid_width, grid_height) = {
         match &config.map {
-            Map::Box(box_map) => (box_map.width, box_map.height),
+            Map::Default(box_map) => (box_map.width, box_map.height),
             Map::Corridors(corridors_map) => (corridors_map.width, corridors_map.height),
             Map::Custom(custom_map) => (custom_map.data.width, custom_map.data.height),
         }
