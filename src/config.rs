@@ -182,20 +182,24 @@ impl Map {
                                         == 0
                                         && x > 2
                                         && x < width - corridor_width - 1
-                                        && y < get_wall_height(&mut top_wall_heights, generator, x)
-                                            + 1)
+                                        && (y as i32)
+                                            < get_wall_height(&mut top_wall_heights, generator, x)
+                                                as i32
+                                                + 1)
                                     || ((x as i32 - bottom_corridor_offset)
                                         % (corridor_width as i32 + 1)
                                         == 0
                                         && x > 2
                                         && x < width - corridor_width - 1
-                                        && y > height
-                                            - get_wall_height(
-                                                &mut bottom_wall_heights,
-                                                generator,
-                                                x,
-                                            )
-                                            - 2)
+                                        && y as i32
+                                            > (*height as i32
+                                                - get_wall_height(
+                                                    &mut bottom_wall_heights,
+                                                    generator,
+                                                    x,
+                                                )
+                                                    as i32
+                                                - 2))
                                 {
                                     Cell::Wall
                                 } else {
