@@ -107,7 +107,7 @@ fn main() {
         ))
         .insert_resource(Respawn::default())
         .insert_resource(Random::new(&config))
-        .insert_resource(config)
+        .insert_non_send_resource(config)
         .insert_resource(theme)
         .insert_resource(GridDimensions {
             width: grid_width,
@@ -123,7 +123,7 @@ fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server: Res<AssetServer>,
-    config: Res<Config>,
+    config: NonSend<Config>,
     dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
     mut random: ResMut<Random>,
@@ -268,7 +268,7 @@ fn snake_spawn(
     spawn_positions: Res<SpawnPositions>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
-    config: Res<Config>,
+    config: NonSend<Config>,
     dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
     mut random: ResMut<Random>,
@@ -359,7 +359,7 @@ fn snake_collision_check(
     time: Res<Time>,
     mut respawn_event: ResMut<Respawn>,
     audio_assets: Res<AudioAssets>,
-    config: Res<Config>,
+    config: NonSend<Config>,
     dimensions: Res<GridDimensions>,
 ) {
     for (snake_head_entity, snake_head, snake_head_position) in snake_heads.iter_mut() {
@@ -406,7 +406,7 @@ fn snake_eating(
     time: Res<Time>,
     mut windows: ResMut<Windows>,
     audio_assets: Res<AudioAssets>,
-    config: Res<Config>,
+    config: NonSend<Config>,
     dimensions: Res<GridDimensions>,
     theme: Res<Theme>,
 ) {

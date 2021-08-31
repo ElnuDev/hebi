@@ -26,7 +26,7 @@ impl Default for DefaultMap {
     }
 }
 
-#[typetag::serde]
+#[typetag::serde(name = "default")]
 impl Map for DefaultMap {
     fn get_map_data(&self, _generator: &mut rand_pcg::Pcg64) -> MapData {
         let width = self.width;

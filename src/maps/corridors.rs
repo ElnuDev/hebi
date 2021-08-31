@@ -34,7 +34,7 @@ impl Default for CorridorsMap {
     }
 }
 
-#[typetag::serde]
+#[typetag::serde(name = "corridors")]
 impl Map for CorridorsMap {
     fn get_map_data(&self, generator: &mut Pcg64) -> MapData {
         let width = self.width;

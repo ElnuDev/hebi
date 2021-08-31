@@ -51,7 +51,7 @@ pub struct MapData {
     pub cells: HashMap<(u32, u32), Cell>,
 }
 
-fn serialize_cells<S>(cells: &HashMap<(u32, u32), Cell>, s: S) -> Result<S::Ok, S::Error>
+fn serialize_cells<S>(_cells: &HashMap<(u32, u32), Cell>, _s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {

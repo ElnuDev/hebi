@@ -12,7 +12,7 @@ pub struct CustomMap {
     pub data: MapData,
 }
 
-#[typetag::serde]
+#[typetag::serde(name = "custom")]
 impl Map for CustomMap {
     fn get_map_data(&self, _generator: &mut rand_pcg::Pcg64) -> MapData {
         self.data.clone()
