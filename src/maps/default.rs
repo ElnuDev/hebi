@@ -1,12 +1,12 @@
 use crate::{
-    config::{Cell, MapData, MapType},
+    config::{Cell, Map, MapData},
     Direction,
 };
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub struct DefaultMap {
     pub width: u32,
@@ -26,7 +26,8 @@ impl Default for DefaultMap {
     }
 }
 
-impl MapType for DefaultMap {
+#[typetag::serde]
+impl Map for DefaultMap {
     fn get_map_data(&self, _generator: &mut rand_pcg::Pcg64) -> MapData {
         let width = self.width;
         let height = self.height;
@@ -80,5 +81,8 @@ impl MapType for DefaultMap {
                 cells
             },
         }
+    }
+    fn get_dimensions(&self) -> (u32, u32) {
+        (self.width, self.height)
     }
 }

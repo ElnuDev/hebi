@@ -65,13 +65,7 @@ fn main() {
     let config: Config = read_toml_file("config.toml");
     let theme: Theme = read_toml_file(&format!("themes/{}.toml", config.theme));
 
-    let (grid_width, grid_height) = {
-        match &config.map {
-            Map::Default(box_map) => (box_map.width, box_map.height),
-            Map::Corridors(corridors_map) => (corridors_map.width, corridors_map.height),
-            Map::Custom(custom_map) => (custom_map.data.width, custom_map.data.height),
-        }
-    };
+    let (grid_width, grid_height) = config.map.get_dimensions();
 
     let grid_scale = config.grid_scale;
 

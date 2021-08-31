@@ -1,21 +1,24 @@
 use crate::{
-    config::{Cell, MapData, MapType},
+    config::{Cell, Map, MapData},
     Direction,
 };
 
-use rand_pcg::Pcg64;
-use serde::{de::Visitor, Deserialize, Deserializer};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use std::{collections::HashMap, convert::TryInto};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct CustomMap {
     #[serde(deserialize_with = "deserialize_map_data")]
     pub data: MapData,
 }
 
-impl MapType for CustomMap {
-    fn get_map_data(&self, _generator: &mut Pcg64) -> MapData {
+#[typetag::serde]
+impl Map for CustomMap {
+    fn get_map_data(&self, _generator: &mut rand_pcg::Pcg64) -> MapData {
         self.data.clone()
+    }
+    fn get_dimensions(&self) -> (u32, u32) {
+        (self.data.width, self.data.height)
     }
 }
 

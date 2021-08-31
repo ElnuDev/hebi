@@ -2,7 +2,7 @@ use crate::{maps::*, Direction};
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashMap;
 
 #[derive(Deserialize)]
@@ -10,7 +10,7 @@ use std::collections::HashMap;
 pub struct Config {
     pub theme: String,
     pub seed: u64,
-    pub map: Map,
+    pub map: Box<dyn Map>,
     pub grid_scale: u32,
     pub tick_length: f64,
     pub food_ticks: u32,
@@ -28,7 +28,7 @@ impl Default for Config {
         Self {
             theme: "dracula".into(),
             seed: random(),
-            map: Default::default(),
+            map: Box::new(DefaultMap::default()),
             grid_scale: 36,
             tick_length: 0.2,
             food_ticks: 16,
@@ -43,40 +43,19 @@ impl Default for Config {
     }
 }
 
-#[derive(Deserialize)]
-#[serde(tag = "type")]
-pub enum Map {
-    #[serde(rename = "default")]
-    Default(DefaultMap),
-
-    #[serde(rename = "corridors")]
-    Corridors(CorridorsMap),
-
-    #[serde(rename = "custom")]
-    Custom(CustomMap),
-}
-
-impl Default for Map {
-    fn default() -> Self {
-        Self::Default(Default::default())
-    }
-}
-
-impl Map {
-    pub fn get_map_data(&self, generator: &mut Pcg64) -> MapData {
-        match self {
-            Self::Default(box_map) => box_map.get_map_data(generator),
-            Self::Corridors(corridors_map) => corridors_map.get_map_data(generator),
-            Self::Custom(custom_map) => custom_map.get_map_data(generator),
-        }
-    }
-}
-
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct MapData {
     pub width: u32,
     pub height: u32,
+    #[serde(serialize_with = "serialize_cells")]
     pub cells: HashMap<(u32, u32), Cell>,
+}
+
+fn serialize_cells<S>(cells: &HashMap<(u32, u32), Cell>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    unimplemented!("Map data cells serialization is unimplemented!");
 }
 
 impl MapData {
@@ -113,6 +92,8 @@ impl Default for Theme {
     }
 }
 
-pub trait MapType {
+#[typetag::serde(tag = "type")]
+pub trait Map {
     fn get_map_data(&self, generator: &mut Pcg64) -> MapData;
+    fn get_dimensions(&self) -> (u32, u32);
 }

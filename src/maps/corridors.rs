@@ -1,14 +1,14 @@
 use crate::{
-    config::{Cell, MapData, MapType},
+    config::{Cell, Map, MapData},
     Direction,
 };
 
 use rand::prelude::*;
 use rand_pcg::Pcg64;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(default)]
 pub struct CorridorsMap {
     pub width: u32,
@@ -34,8 +34,9 @@ impl Default for CorridorsMap {
     }
 }
 
-impl MapType for CorridorsMap {
-    fn get_map_data(&self, generator: &mut rand_pcg::Pcg64) -> MapData {
+#[typetag::serde]
+impl Map for CorridorsMap {
+    fn get_map_data(&self, generator: &mut Pcg64) -> MapData {
         let width = self.width;
         let height = self.height;
         let corridor_width = self.corridor_width;
@@ -133,5 +134,8 @@ impl MapType for CorridorsMap {
                 cells
             },
         }
+    }
+    fn get_dimensions(&self) -> (u32, u32) {
+        (self.width, self.height)
     }
 }
