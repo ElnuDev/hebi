@@ -13,6 +13,7 @@ use std::collections::HashMap;
 pub struct CorridorsMap {
     pub width: u32,
     pub height: u32,
+    horizontal: bool,
     corridor_width: u32,
     corridor_height: u32,
     top_corridor_offset: i32,
@@ -25,6 +26,7 @@ impl Default for CorridorsMap {
         Self {
             width: 34,
             height: 17,
+            horizontal: false,
             corridor_width: 3,
             corridor_height: 10,
             top_corridor_offset: 3,
@@ -37,16 +39,17 @@ impl Default for CorridorsMap {
 #[typetag::serde(name = "corridors")]
 impl Map for CorridorsMap {
     fn get_map_data(&self, generator: &mut Pcg64) -> MapData {
-        let width = self.width;
-        let height = self.height;
+        let horizontal = self.horizontal;
+        let width = if horizontal { self.height } else { self.width };
+        let height = if horizontal { self.width } else { self.height };
         let corridor_width = self.corridor_width;
         let corridor_height = self.corridor_height;
         let top_corridor_offset = self.top_corridor_offset;
         let bottom_corridor_offset = self.bottom_corridor_offset;
         let wall_variance = self.wall_variance;
         MapData {
-            width,
-            height,
+            width: self.width,
+            height: self.height,
             cells: {
                 let mut cells = HashMap::new();
                 let corridor_width = corridor_width as u32;
@@ -118,7 +121,14 @@ impl Map for CorridorsMap {
                     cells.insert((x - 1, y), Cell::Empty);
                     cells.insert((x, y), Cell::Empty);
                     cells.insert((x + 1, y), Cell::Empty);
-                    cells.insert((x + 1, height - 3), Cell::Spawn(Direction::Up));
+                    cells.insert(
+                        (x + 1, height - 3),
+                        Cell::Spawn(if horizontal {
+                            Direction::Left
+                        } else {
+                            Direction::Up
+                        }),
+                    );
                 }
                 for (x, wall_height) in top_wall_heights.iter() {
                     let x = *x as u32;
@@ -129,7 +139,21 @@ impl Map for CorridorsMap {
                     cells.insert((x - 1, y), Cell::Empty);
                     cells.insert((x, y), Cell::Empty);
                     cells.insert((x + 1, y), Cell::Empty);
-                    cells.insert((x + 1, 2), Cell::Spawn(Direction::Down));
+                    cells.insert(
+                        (x + 1, 2),
+                        Cell::Spawn(if horizontal {
+                            Direction::Right
+                        } else {
+                            Direction::Down
+                        }),
+                    );
+                }
+                if horizontal {
+                    let original_cells = cells;
+                    cells = HashMap::new();
+                    for ((y, x), cell) in original_cells.iter() {
+                        cells.insert((*x, *y), *cell);
+                    }
                 }
                 cells
             },
