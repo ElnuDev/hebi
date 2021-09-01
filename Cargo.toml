@@ -1,3 +1,5 @@
+cargo-features = ["strip"]
+
 [package]
 name = "hebi"
 version = "0.1.0"
@@ -5,10 +7,23 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.release]
+strip = true
+
 [dependencies]
-bevy = "0.5.0"
 rand = "0.8.4"
 rand_pcg = "0.3.1"
 toml = "0.5.8"
 serde = { version = "1.0.129", features = ["derive"] }
 typetag = "0.1.7"
+
+[dependencies.bevy]
+version = "0.5.0"
+default-features = false
+features = [
+  "bevy_audio",
+  "bevy_wgpu",
+  "render",
+  "mp3",
+  "x11",
+]
