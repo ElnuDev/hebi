@@ -6,6 +6,7 @@ mod maps;
 use crate::config::*;
 use bevy::core::FixedTimestep;
 use bevy::input::keyboard::KeyboardInput;
+use bevy::input::ElementState;
 use bevy::prelude::*;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
@@ -321,6 +322,9 @@ fn snake_movement_input(
     mut snake_heads: Query<&mut SnakeHead>,
 ) {
     for event in keyboard_input_reader.iter() {
+        if event.state == ElementState::Released {
+            continue;
+        }
         for mut snake_head in snake_heads.iter_mut() {
             let direction: Direction = match event.key_code.unwrap() {
                 KeyCode::Left => Direction::Left,
