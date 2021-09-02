@@ -5,6 +5,7 @@ mod maps;
 
 use crate::config::*;
 use bevy::core::FixedTimestep;
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
@@ -316,23 +317,21 @@ fn snake_spawn(
 }
 
 fn snake_movement_input(
-    keyboard_input: Res<Input<KeyCode>>,
+    mut keyboard_input_reader: EventReader<KeyboardInput>,
     mut snake_heads: Query<&mut SnakeHead>,
 ) {
-    for mut snake_head in snake_heads.iter_mut() {
-        let direction: Direction = if keyboard_input.pressed(KeyCode::Left) {
-            Direction::Left
-        } else if keyboard_input.pressed(KeyCode::Down) {
-            Direction::Down
-        } else if keyboard_input.pressed(KeyCode::Up) {
-            Direction::Up
-        } else if keyboard_input.pressed(KeyCode::Right) {
-            Direction::Right
-        } else {
-            snake_head.next_direction
-        };
-        if direction != snake_head.direction.opposite() {
-            snake_head.next_direction = direction;
+    for event in keyboard_input_reader.iter() {
+        for mut snake_head in snake_heads.iter_mut() {
+            let direction: Direction = match event.key_code.unwrap() {
+                KeyCode::Left => Direction::Left,
+                KeyCode::Down => Direction::Down,
+                KeyCode::Up => Direction::Up,
+                KeyCode::Right => Direction::Right,
+                _ => snake_head.direction,
+            };
+            if direction != snake_head.direction.opposite() {
+                snake_head.next_direction = direction;
+            }
         }
     }
 }
