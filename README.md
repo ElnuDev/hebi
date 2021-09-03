@@ -39,10 +39,10 @@ corridor_width = 2
 | `snake_spawn_segments`           | `u32`    | 2                   | Sets the number of segments the snake spawns with, including the head.<br />**💥 Modifying this option from its default value may cause the game to crash.** |
 | `snake_segment_despawn_interval` | `f64`    | 0.1                 | Sets the interval between each segment despawning upon snake death in seconds. You can set this to 0 if you want the entire snake to despawn at once. |
 | `snake_respawn_delay`            | `f64`    | 0.5                 | Sets the delay in seconds between all segments despawning upon snake death and respawning. |
-| `eat_audio`                      | `String` | `"eat.mp3"`         | Sets the audio file for the destruction of the snake's head and segments. For example, `eat_audio = "munch.mp3"` (fictional file) would load the audio file `assets/sounds/munch.mp3`. |
-| `destroy_audio`                  | `String` | `"destroy.mp3"`     | Sets the audio file for the destruction of the snake's head and segments. |
-| `spawn_food_audio`               | `String` | `"spawn_food.mp3"`  | Sets the audio file for when food is spawned.                |
-| `spawn_snake_audio`              | `String` | `"spawn_snake.mp3"` | Sets the audio file for when the snake is spawned.           |
+| `eat_audio`                      | `String` | `"eat.wav"`         | Sets the audio file for the destruction of the snake's head and segments. The source for the default audio file is [jsfxr](https://sfxr.me/#57uBnWW6qLhyjpFep6TfgTpUq3NWw9QDzC57E3fRDzxMJcMxKU2Vf3cnrtwda72DFTXTh4uAyNHNaYAPEmxGmQgGoPmpNwUFEsCAGoCXU5oDzhPjzZbUiEbKm). For example, `eat_audio = "munch.wav"` (fictional file) would load the audio file `assets/sounds/munch.wav`. Both .mp3 and .wav files are supported. |
+| `destroy_audio`                  | `String` | `"destroy.wav"`     | Sets the audio file for the destruction of the snake's head and segments. The source for the default audio file is [jsfxr](https://sfxr.me/#34T6PkxL9oPjLUfyMmrzX5FyQN3bbUE7cXxh6uheFgHTUxRwYULGTu1GKNxfiTvbFjRTCSCR18TaPxMnG5mJixoBHaNNgXNizga8FsaumrQ2p9uY7fDP7DXu1). |
+| `spawn_food_audio`               | `String` | `"spawn_food.wav"`  | Sets the audio file for when food is spawned. The source for the default audio file is [jsfxr](https://sfxr.me/#34T6PkscYMb2dTVg4ZkS6KT3VBBapkwTVHJ1TmYSyg5EPKW3xPUZnVoPTvLjiipn53KMST3apAL6rwNLL5MdpaCeYqmTLSfwCtY6nQTF9MoQ6yzxPQmMZjFVZ). |
+| `spawn_snake_audio`              | `String` | `"spawn_snake.wav"` | Sets the audio file for when the snake is spawned. The source for the default audio file is [jsfxr](https://sfxr.me/#34T6Pkiv4PXt51ecS74iabk9atWWPVcocCK1djV4oiBPiFhtgTTm9fim9UPDsAAxW2GnXAMvo69oApuqeuUx6jw4XQKJMoJfG6XQDDAhmFHHXptU9Aqe7or6A). |
 
 ## Themes
 

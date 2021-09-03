@@ -35,10 +35,10 @@ impl Default for Config {
             snake_spawn_segments: 2,
             snake_segment_despawn_interval: 0.1,
             snake_respawn_delay: 0.5,
-            eat_audio: "eat.mp3".into(),
-            destroy_audio: "destroy.mp3".into(),
-            spawn_food_audio: "spawn_food.mp3".into(),
-            spawn_snake_audio: "spawn_snake.mp3".into(),
+            eat_audio: "eat.wav".into(),
+            destroy_audio: "destroy.wav".into(),
+            spawn_food_audio: "spawn_food.wav".into(),
+            spawn_snake_audio: "spawn_snake.wav".into(),
         }
     }
 }

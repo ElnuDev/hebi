@@ -26,6 +26,9 @@ features = [
   "bevy_audio",
   "bevy_wgpu",
   "render",
+  # Default audio files are .wav,
+  # but the mp3 feature is here in case the user wants to use mp3 files instead.
   "mp3",
+  "wav",
   "x11",
 ]
