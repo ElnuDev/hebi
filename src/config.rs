@@ -11,6 +11,7 @@ pub struct Config {
     pub theme: String,
     pub seed: u64,
     pub map: Box<dyn Map>,
+    pub controls: Controls,
     pub grid_scale: u32,
     pub tick_length: f64,
     pub food_ticks: u32,
@@ -29,6 +30,7 @@ impl Default for Config {
             theme: "dracula".into(),
             seed: random(),
             map: Box::new(DefaultMap::default()),
+            controls: Default::default(),
             grid_scale: 36,
             tick_length: 0.2,
             food_ticks: 16,
@@ -41,6 +43,53 @@ impl Default for Config {
             spawn_snake_audio: "spawn_snake.wav".into(),
         }
     }
+}
+
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Controls {
+    pub up: Vec<Binding>,
+    pub down: Vec<Binding>,
+    pub left: Vec<Binding>,
+    pub right: Vec<Binding>,
+}
+
+impl Default for Controls {
+    fn default() -> Self {
+        Self {
+            up: vec![
+                Binding::Keyboard { code: 57416 }, // up arrow key
+                Binding::Keyboard { code: 17 }, // W
+                Binding::Keyboard { code: 37 }, // K
+                Binding::Keyboard { code: 72 }, // numpad up
+            ],
+            down: vec![
+                Binding::Keyboard { code: 57424 }, // down arrow key
+                Binding::Keyboard { code: 31 }, // S
+                Binding::Keyboard { code: 36 }, // J
+                Binding::Keyboard { code: 80 }, // numpad down
+            ],
+            left: vec![
+                Binding::Keyboard { code: 57419 }, // left arrow key
+                Binding::Keyboard { code: 30 }, // A
+                Binding::Keyboard { code: 35 }, // H
+                Binding::Keyboard { code: 75 }, // numpad left
+            ],
+            right: vec![
+                Binding::Keyboard { code: 57421 }, // right arrow key
+                Binding::Keyboard { code: 32 }, // D
+                Binding::Keyboard { code: 38 }, // L
+                Binding::Keyboard { code: 77 }, // numpad right
+            ],
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "device")]
+pub enum Binding {
+    #[serde(rename = "keyboard")]
+    Keyboard { code: u32 }
 }
 
 #[derive(Clone, Serialize)]
