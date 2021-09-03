@@ -328,10 +328,10 @@ fn snake_movement_input(
         for mut snake_head in snake_heads.iter_mut() {
             let direction = if let Some(code) = event.key_code {
                 match code {
-                    KeyCode::Left | KeyCode::H | KeyCode::Numpad4 => Direction::Left,
-                    KeyCode::Down | KeyCode::J | KeyCode::Numpad2 => Direction::Down,
-                    KeyCode::Up | KeyCode::K | KeyCode::Numpad8 => Direction::Up,
-                    KeyCode::Right | KeyCode::L | KeyCode::Numpad6 => Direction::Right,
+                    KeyCode::Left | KeyCode::H | KeyCode::Numpad4 | KeyCode::A => Direction::Left,
+                    KeyCode::Down | KeyCode::J | KeyCode::Numpad2 | KeyCode::S => Direction::Down,
+                    KeyCode::Up | KeyCode::K | KeyCode::Numpad8 | KeyCode::W => Direction::Up,
+                    KeyCode::Right | KeyCode::L | KeyCode::Numpad6 | KeyCode::D => Direction::Right,
                     _ => snake_head.direction,
                 }
             } else {
