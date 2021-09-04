@@ -8,6 +8,7 @@ use bevy::core::FixedTimestep;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::ElementState;
 use bevy::prelude::*;
+use bevy::utils::HashMap;
 use rand::prelude::*;
 use rand::seq::SliceRandom;
 use rand_pcg::Pcg64;
@@ -27,6 +28,49 @@ struct GridDimensions {
     width: u32,
     height: u32,
     scale: u32,
+}
+
+struct DirectionalControls {
+    scan_codes: HashMap<KeyCode, Direction>,
+}
+
+impl DirectionalControls {
+    fn from_keyboard(&self, event: &KeyboardInput) -> Option<Direction> {
+        event.key_code
+            .and_then(|code| self.scan_codes.get(&code))
+            .cloned()
+    }
+}
+
+impl FromWorld for DirectionalControls {
+    fn from_world(world: &mut World) -> Self {
+        let config = world
+            .get_non_send_resource::<Config>()
+            .expect("Missing configuration from which to create control mapping");
+
+        let mut result = Self {
+            scan_codes: Default::default(),
+        };
+
+        let by_direction = [
+            (Direction::Up, &config.controls.up),
+            (Direction::Down, &config.controls.down),
+            (Direction::Left, &config.controls.left),
+            (Direction::Right, &config.controls.right),
+        ];
+
+        for (direction, bindings) in by_direction {
+            for binding in bindings {
+                match binding {
+                    Binding::Keyboard { key } => {
+                        result.scan_codes.insert(*key, direction);
+                    }
+                }
+            }
+        }
+
+        result
+    }
 }
 
 struct Random {
@@ -116,6 +160,7 @@ fn main() {
             height: grid_height,
             scale: grid_scale,
         })
+        .init_resource::<DirectionalControls>()
         .add_event::<RespawnEvent>()
         .add_plugins(DefaultPlugins)
         .run();
@@ -320,26 +365,25 @@ fn snake_spawn(
 fn snake_movement_input(
     mut keyboard_input_reader: EventReader<KeyboardInput>,
     mut snake_heads: Query<&mut SnakeHead>,
+    controls: Res<DirectionalControls>,
 ) {
+    let mut direction = None;
+
     for event in keyboard_input_reader.iter() {
         if event.state == ElementState::Released {
             continue;
         }
+
+        direction = controls.from_keyboard(event).or(direction);
+    }
+
+    if let Some(direction) = direction {
         for mut snake_head in snake_heads.iter_mut() {
-            let direction = if let Some(code) = event.key_code {
-                match code {
-                    KeyCode::Left | KeyCode::H | KeyCode::Numpad4 | KeyCode::A => Direction::Left,
-                    KeyCode::Down | KeyCode::J | KeyCode::Numpad2 | KeyCode::S => Direction::Down,
-                    KeyCode::Up | KeyCode::K | KeyCode::Numpad8 | KeyCode::W => Direction::Up,
-                    KeyCode::Right | KeyCode::L | KeyCode::Numpad6 | KeyCode::D => Direction::Right,
-                    _ => snake_head.direction,
-                }
-            } else {
+            if direction == snake_head.direction.opposite() {
                 continue;
-            };
-            if direction != snake_head.direction.opposite() {
-                snake_head.next_direction = direction;
             }
+
+            snake_head.next_direction = direction;
         }
     }
 }
@@ -491,7 +535,7 @@ struct Respawn {
 
 struct RespawnEvent;
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Direction {
     Left,
     Right,
