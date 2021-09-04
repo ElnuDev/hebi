@@ -142,21 +142,21 @@ If you want to create a custom map generation type, a good starting point would 
 
 Do you like what you see? Or maybe, you'd like to contribute to the project?
 
-If you answered "yes", then follow through these steps to get the game up and running, built right from source. 
+If you answered "Yes", then follow through these steps to get the game up and running, built right from source. 
 
-Before we get to work, please note that Hebi uses some nightly Rust features that 
-haven't yet been introduced to the stable channel. To address this, you'll have to 
-install and build the game using Rust nightly.
+If you don't have Rust installed already, see [the installation guide on Rust's official website](https://www.rust-lang.org/tools/install) and then come back once you're done.
 
-1. Let's default to it, if it's not already installed, then `rustup` will take care of that for you:
+Before we get to work, please note that Hebi uses some nightly Rust features ([`strip`](https://github.com/johnthagen/min-sized-rust#strip-symbols-from-binary), which is one of the features used to create smaller binary sizes), that haven't been introduced to the stable channel. If you want to build Hebi without nightly Rust, remove or comment out the lines `cargo-features = ["strip"]` from the top and `strip = true` under `[profile.release]` in `Cargo.toml`.
 
-```
+1. Default to Rust nightly. If it's not already installed, `rustup` will take care of installation for you
+
+```bash
 rustup default nightly
 ```
 
 2. Now, clone the repository:
 
-```
+```bash
 git clone https://github.com/ElnuDev/hebi.git
 ```
 
@@ -168,9 +168,9 @@ cd hebi
 
 4. Okay, let's proceed by building the game; you know, turning that _code_ into an _executable_.
 
-- If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time.
+If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time:
 
-```
+```bash
 cargo build
 ```
 
@@ -181,3 +181,37 @@ cargo build --release
 ```
 
 5.  Now that you've built it yourself, you might want to [configure Hebi](#configuration).
+
+### [Compressing with `upx`](https://github.com/johnthagen/min-sized-rust#compress-the-binary)
+
+The Linux and Windows (gross) builds provided in the [releases](https://github.com/ElnuDev/hebi/releases) section are compressed with [UPX](https://github.com/upx/upx), the **U**ltimate **P**acker for e**X**ecutables. UPX can reduce the binary size of Hebi by around 75%. If you want to make a distributable build of Hebi and have already used the `--release` flag for `cargo build`, you may also want to consider UPX. The cons of using UPX is that Hebi may be more likely to be flagged as malware by antivirus software, and there could be a performance penalty (unconfirmed, though it doesn't really matter much for such a simple game).
+
+1. Install UPX
+
+If you're on a Debian-based Linux distribution, you can install it with `apt`:
+
+```bash
+sudo apt install upx
+```
+
+If you're on Windows, you can download it from the UPX GitHub repository's [releases section](https://github.com/upx/upx/releases). To my knowledge, it's not available for `winget`, Window's new package manager, just yet.
+
+2. Compress the binary
+
+Ensure you're in the cloned Hebi folder first.
+
+Linux:
+
+```bash
+upx --best --lzma target/release/hebi
+```
+
+Windows:
+
+```shell
+path\to\upx.exe --best --lzma target\release\hebi.exe
+```
+
+### Distribution
+
+For distribution, make sure to include the executable (`hebi` on Linux, `hebi.exe` on Windows) next to the `themes` and `assets` folder.
