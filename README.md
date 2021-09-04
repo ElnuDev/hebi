@@ -142,7 +142,7 @@ If you want to create a custom map generation type, a good starting point would 
 
 You've taken interest in the project and would like to work on it or build your own Hebi from source, follow through these steps to get it up and running on your machine.
 
-Before we get to work, please note that Hebi uses some nightly Rust features that haven't been stabilized in the stable channel.
+Before we get to work, please note that Hebi uses some nightly Rust features that haven't been introduced to the stable channel.
 
 1. Let's default to Rust nightly, if it's not already installed, rustup will take care of that for you
 
