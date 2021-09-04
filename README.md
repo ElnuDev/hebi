@@ -162,7 +162,7 @@ git clone https://github.com/ElnuDev/hebi.git
 cd hebi
 ```
 
-4. Build it
+4. Build it:
 
 - If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time
 
