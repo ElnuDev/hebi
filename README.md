@@ -148,7 +148,7 @@ If you don't have Rust installed already, see [the installation guide on Rust's 
 
 Before we get to work, please note that Hebi uses some nightly Rust features ([`strip`](https://github.com/johnthagen/min-sized-rust#strip-symbols-from-binary), which is one of the features used to create smaller binary sizes), that haven't been introduced to the stable channel. If you want to build Hebi without nightly Rust, remove or comment out the lines `cargo-features = ["strip"]` from the top and `strip = true` under `[profile.release]` in `Cargo.toml`.
 
-1. Default to Rust nightly. If it's not already installed, `rustup` will take care of installation for you
+1. Don't mind installing the channel? Then, let's default to it. If it's not already installed, then `rustup` will take care of that for you:
 
 ```bash
 rustup default nightly
@@ -168,7 +168,7 @@ cd hebi
 
 4. Okay, let's proceed by building the game; you know, turning that _code_ into an _executable_.
 
-If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time:
+- If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time:
 
 ```bash
 cargo build
