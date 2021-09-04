@@ -8,7 +8,7 @@
 </h1>
 <h4 align="center">A highly customizable snake clone made in Rust with the <a href="https://github.com/bevyengine/bevy">Bevy engine</a>, named after the Japanese word for snake, <ruby>蛇<rp>(</rp><rt>へび</rt><rp>)</rp></ruby>.</h4>
 
-## Configuration
+## Configuration <a name="configuration"></a>
 
 One of the things that sets apart Hebi from other snake clones is its rich configuration options. You can configure pretty much everything: the map, tick speed, food spawn rate, window scale, etc. You can even [make your own custom color themes](#Themes) in addition to those provided! Keep in mind that Hebi is still very much a work-in-progress, so the names, behavior, and functionality of configuration options may change in the future.
 
@@ -136,3 +136,44 @@ In the `data` field is where you make your map. A space means empty space and a 
 If you feel like there's something you'd like to add to the game, feel free to make a fork and submit a pull request! I'll try to review it as soon as possible. If there's an issue with how I've structured the code in the project and you feel like there's a better way, however, please make an issue instead. Hebi is a learning project for me to learn Rust and Bevy, and I'd like to implement most of the core changes myself.
 
 If you want to create a custom map generation type, a good starting point would be looking at `src/maps/default.rs`. Once you've got your generator working, submit it with a pull request! The more variety in game maps the better.
+
+
+## Building from source
+
+You've taken interest in the project and would like to work on it or build your own Hebi from source, follow through these steps to get it up and running on your machine.
+
+Before we get to work, please note that Hebi uses some nightly Rust features that haven't been stabilized in the stable channel.
+
+1. Let's default to Rust nightly, if it's not already installed, rustup will take care of that for you
+
+```
+rustup default nightly
+```
+
+2. Clone the repository
+
+```
+git clone https://github.com/ElnuDev/hebi.git
+```
+
+3. Jump inside the newly cloned repository
+
+```
+cd hebi
+```
+
+4. Build it
+
+- If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time
+
+```
+cargo build
+```
+
+- If you're ready to take your Snake game to the next level and want the best experience
+
+```
+cargo build --release
+```
+
+5. You might want to [configure the game](#configuration) now that you've built it yourself
