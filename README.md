@@ -8,7 +8,7 @@
 </h1>
 <h4 align="center">A highly customizable snake clone made in Rust with the <a href="https://github.com/bevyengine/bevy">Bevy engine</a>, named after the Japanese word for snake, <ruby>蛇<rp>(</rp><rt>へび</rt><rp>)</rp></ruby>.</h4>
 
-## Configuration
+## Configuration <a name="configuration"></a>
 
 One of the things that sets apart Hebi from other snake clones is its rich configuration options. You can configure pretty much everything: the map, tick speed, food spawn rate, window scale, etc. You can even [make your own custom color themes](#Themes) in addition to those provided! Keep in mind that Hebi is still very much a work-in-progress, so the names, behavior, and functionality of configuration options may change in the future.
 
@@ -136,3 +136,80 @@ In the `data` field is where you make your map. A space means empty space and a 
 If you feel like there's something you'd like to add to the game, feel free to make a fork and submit a pull request! I'll try to review it as soon as possible. If there's an issue with how I've structured the code in the project and you feel like there's a better way, however, please make an issue instead. Hebi is a learning project for me to learn Rust and Bevy, and I'd like to implement most of the core changes myself.
 
 If you want to create a custom map generation type, a good starting point would be looking at `src/maps/default.rs`. Once you've got your generator working, submit it with a pull request! The more variety in game maps the better.
+
+
+## Building from source
+
+If you've taken interest in the project and would like to work on it or build your 🐍 from source, follow through these steps to get it up and running on your machine.
+
+If you don't have Rust installed already, see [the installation guide on Rust's official website](https://www.rust-lang.org/tools/install) and then come back when you're done.
+
+Before we get to work, please note that Hebi uses some nightly Rust features ([`strip`](https://github.com/johnthagen/min-sized-rust#strip-symbols-from-binary), which is one of the features used to create smaller binary sizes), that haven't been introduced to the stable channel. If you want to build Hebi without nightly Rust, remove or comment out the lines `cargo-features = ["strip"]` from the top and `strip = true` under `[profile.release]` in `Cargo.toml`.
+
+1. Default to Rust nightly. If it's not already installed, `rustup` will take care of installation for you
+
+```bash
+rustup default nightly
+```
+
+2. Clone the repository
+
+```bash
+git clone https://github.com/ElnuDev/hebi.git
+```
+
+3. Jump inside the newly cloned repository
+
+```bash
+cd hebi
+```
+
+4. Build it
+
+If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time:
+
+```bash
+cargo build
+```
+
+If you're ready to take your snake game to the next level and want the best experience:
+
+```bash
+cargo build --release
+```
+
+5. You might want to [configure the game](#configuration) now that you've built it yourself!
+
+### [Compressing with `upx`](https://github.com/johnthagen/min-sized-rust#compress-the-binary)
+
+The Linux and Windows (gross) builds provided in the [releases](https://github.com/ElnuDev/hebi/releases) section are compressed with [UPX](https://github.com/upx/upx), the **U**ltimate **P**acker for e**X**ecutables. UPX can reduce the binary size of Hebi by around 75%. If you want to make a distributable build of Hebi and have already used the `--release` flag for `cargo build`, you may also want to consider UPX. The cons of using UPX is that Hebi may be more likely to be flagged as malware by antivirus software, and there could be a performance penalty (unconfirmed, though it doesn't really matter much for such a simple game).
+
+1. Install UPX
+
+If you're on a Debian-based Linux distribution, you can install it with `apt`:
+
+```bash
+sudo apt install upx
+```
+
+If you're on Windows, you can download it from the UPX GitHub repository's [releases section](https://github.com/upx/upx/releases). To my knowledge, it's not available for `winget`, Window's new package manager, just yet.
+
+2. Compress the binary
+
+Ensure you're in the cloned Hebi folder first.
+
+Linux:
+
+```bash
+upx --best --lzma target/release/hebi
+```
+
+Windows:
+
+```shell
+path\to\upx.exe --best --lzma target\release\hebi.exe
+```
+
+### Distribution
+
+For distribution, make sure to include the executable (`hebi` on Linux, `hebi.exe` on Windows) next to the `themes` and `assets` folder.
