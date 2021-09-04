@@ -25,6 +25,7 @@ default-features = false
 features = [
   "bevy_audio",
   "bevy_wgpu",
+  "serialize",
   "render",
   # Default audio files are .wav,
   # but the mp3 feature is here in case the user wants to use mp3 files instead.

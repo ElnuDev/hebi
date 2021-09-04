@@ -31,13 +31,13 @@ struct GridDimensions {
 }
 
 struct DirectionalControls {
-    scan_codes: HashMap<u32, Direction>,
+    scan_codes: HashMap<KeyCode, Direction>,
 }
 
 impl DirectionalControls {
     fn from_keyboard(&self, event: &KeyboardInput) -> Option<Direction> {
-        self.scan_codes
-            .get(&event.scan_code)
+        event.key_code
+            .and_then(|code| self.scan_codes.get(&code))
             .cloned()
     }
 }
@@ -62,8 +62,8 @@ impl FromWorld for DirectionalControls {
         for (direction, bindings) in by_direction {
             for binding in bindings {
                 match binding {
-                    Binding::Keyboard { code } => {
-                        result.scan_codes.insert(*code, direction);
+                    Binding::Keyboard { key } => {
+                        result.scan_codes.insert(*key, direction);
                     }
                 }
             }

@@ -1,5 +1,6 @@
 use crate::{maps::*, Direction};
 
+use bevy::prelude::KeyCode;
 use rand::prelude::*;
 use rand_pcg::Pcg64;
 use serde::{Deserialize, Serialize, Serializer};
@@ -58,28 +59,27 @@ impl Default for Controls {
     fn default() -> Self {
         Self {
             up: vec![
-                Binding::Keyboard { code: 57416 }, // up arrow key
-                Binding::Keyboard { code: 17 }, // W
-                Binding::Keyboard { code: 37 }, // K
-                Binding::Keyboard { code: 72 }, // numpad up
+                Binding::Keyboard { key: KeyCode::Up },
+                Binding::Keyboard { key: KeyCode::W },
+                Binding::Keyboard { key: KeyCode::K },
+                Binding::Keyboard { key: KeyCode::Numpad8 }, // numpad up with num lock
             ],
             down: vec![
-                Binding::Keyboard { code: 57424 }, // down arrow key
-                Binding::Keyboard { code: 31 }, // S
-                Binding::Keyboard { code: 36 }, // J
-                Binding::Keyboard { code: 80 }, // numpad down
+                Binding::Keyboard { key: KeyCode::Down },
+                Binding::Keyboard { key: KeyCode::S },
+                Binding::Keyboard { key: KeyCode::J },
+                Binding::Keyboard { key: KeyCode::Numpad2 }, // numpad down with num lock
             ],
             left: vec![
-                Binding::Keyboard { code: 57419 }, // left arrow key
-                Binding::Keyboard { code: 30 }, // A
-                Binding::Keyboard { code: 35 }, // H
-                Binding::Keyboard { code: 75 }, // numpad left
+                Binding::Keyboard { key: KeyCode::Left },
+                Binding::Keyboard { key: KeyCode::A },
+                Binding::Keyboard { key: KeyCode::H },
             ],
             right: vec![
-                Binding::Keyboard { code: 57421 }, // right arrow key
-                Binding::Keyboard { code: 32 }, // D
-                Binding::Keyboard { code: 38 }, // L
-                Binding::Keyboard { code: 77 }, // numpad right
+                Binding::Keyboard { key: KeyCode::Right },
+                Binding::Keyboard { key: KeyCode::D },
+                Binding::Keyboard { key: KeyCode::L },
+                Binding::Keyboard { key: KeyCode::Numpad6 }, // numpad right with num lock
             ],
         }
     }
@@ -89,7 +89,7 @@ impl Default for Controls {
 #[serde(tag = "device")]
 pub enum Binding {
     #[serde(rename = "keyboard")]
-    Keyboard { code: u32 }
+    Keyboard { key: KeyCode }
 }
 
 #[derive(Clone, Serialize)]
