@@ -3,7 +3,7 @@ cargo-features = ["strip"]
 [package]
 name = "hebi"
 version = "0.1.2"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,11 +13,11 @@ lto = true
 codegen-units = 1
 
 [dependencies]
-rand = "0.8.4"
+rand = "0.8.5"
 rand_pcg = "0.3.1"
 toml = "0.5.8"
-serde = { version = "1.0.130", features = ["derive"] }
-typetag = "0.1.7"
+serde = { version = "1.0.136", features = ["derive"] }
+typetag = "0.1.8"
 
 [dependencies.bevy]
 version = "0.5.0"
