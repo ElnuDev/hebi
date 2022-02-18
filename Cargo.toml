@@ -18,11 +18,11 @@ serde = { version = "1.0.136", features = ["derive"] }
 typetag = "0.1.8"
 
 [dependencies.bevy]
-version = "0.5.0"
+version = "0.6.1"
 default-features = false
 features = [
   "bevy_audio",
-  "bevy_wgpu",
+  # "bevy_wgpu",
   "serialize",
   "render",
   # Default audio files are .wav,

@@ -115,32 +115,32 @@ fn main() {
 
     let grid_scale = config.grid_scale;
 
-    App::build()
-        .add_startup_system(setup.system())
-        .add_system(snake_movement_input.system())
-        .add_system(despawning.system().before(Labels::Moving))
+    App::new()
+        .add_startup_system(setup)
+        .add_system(snake_movement_input)
+        .add_system(despawning.before(Labels::Moving))
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(config.tick_length))
-                .with_system(snake_movement.system().label(Labels::Moving))
+                .with_system(snake_movement.label(Labels::Moving))
                 .with_system(
                     snake_respawn
-                        .system()
+                        
                         .label(Labels::Respawning)
                         .after(Labels::Moving),
                 )
-                .with_system(snake_eating.system().after(Labels::Moving))
-                .with_system(snake_collision_check.system().after(Labels::Moving)),
+                .with_system(snake_eating.after(Labels::Moving))
+                .with_system(snake_collision_check.after(Labels::Moving)),
         )
-        .add_system(snake_spawn.system())
+        .add_system(snake_spawn)
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(
                     config.tick_length * config.food_ticks as f64,
                 ))
-                .with_system(food_spawn.system()),
+                .with_system(food_spawn),
         )
-        .add_system_to_stage(CoreStage::PostUpdate, grid_positioning.system())
+        .add_system_to_stage(CoreStage::PostUpdate, grid_positioning)
         .insert_resource(WindowDescriptor {
             title: TITLE.to_string(),
             width: (grid_width * config.grid_scale) as f32,
@@ -232,7 +232,7 @@ fn grid_to_vector(grid_position: &GridPosition, dimensions: &GridDimensions) -> 
 
 fn food_spawn(
     mut commands: Commands,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    _materials: ResMut<Assets<ColorMaterial>>,
     grid_positions: Query<&GridPosition>,
     audio: Res<Audio>,
     audio_assets: Res<AudioAssets>,
@@ -261,15 +261,15 @@ fn food_spawn(
     };
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.add(
-                Color::hex(theme.food.choose(&mut random.food_spawn_generator).unwrap())
-                    .unwrap_or(MISSING_COLOR)
-                    .into(),
-            ),
-            sprite: Sprite::new(Vec2::new(
-                dimensions.scale as f32 * 0.875,
-                dimensions.scale as f32 * 0.875,
-            )),
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(
+                    dimensions.scale as f32 * 0.875,
+                    dimensions.scale as f32 * 0.875,
+                )),
+                color: Color::hex(theme.food.choose(&mut random.food_spawn_generator).unwrap())
+                    .unwrap_or(MISSING_COLOR),
+                ..Default::default()
+            },
             transform: Transform::from_translation(grid_to_vector(&grid_position, &dimensions)),
             ..Default::default()
         })
@@ -280,15 +280,21 @@ fn food_spawn(
 
 fn wall_spawn(
     commands: &mut Commands,
-    materials: &mut Assets<ColorMaterial>,
+    _materials: &mut Assets<ColorMaterial>,
     grid_position: GridPosition,
     dimensions: &GridDimensions,
     theme: &Theme,
 ) {
     commands
         .spawn_bundle(SpriteBundle {
-            material: materials.add(Color::hex(&theme.walls).unwrap_or(MISSING_COLOR).into()),
-            sprite: Sprite::new(Vec2::new(dimensions.scale as f32, dimensions.scale as f32)),
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(
+                    dimensions.scale as f32,
+                    dimensions.scale as f32
+                )),
+                color: Color::hex(&theme.walls).unwrap_or(MISSING_COLOR),
+                ..Default::default()
+            },
             transform: Transform::from_translation(grid_to_vector(&grid_position, dimensions)),
             ..Default::default()
         })
@@ -345,11 +351,14 @@ fn snake_spawn(
         }
         commands
             .spawn_bundle(SpriteBundle {
-                material: materials.add(Color::hex(&theme.snake).unwrap_or(MISSING_COLOR).into()),
-                sprite: Sprite::new(Vec2::new(
-                    config.grid_scale as f32 * 0.875,
-                    config.grid_scale as f32 * 0.875,
-                )),
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(
+                        config.grid_scale as f32 * 0.875,
+                        config.grid_scale as f32 * 0.875,
+                    )),
+                    color: Color::hex(&theme.snake).unwrap_or(MISSING_COLOR),
+                    ..Default::default()
+                },
                 transform: Transform::from_translation(grid_to_vector(
                     &snake_head_position,
                     &dimensions,
@@ -401,6 +410,7 @@ fn snake_movement(
     }
 }
 
+#[derive(Component)]
 struct Collidable;
 
 fn snake_collision_check(
@@ -562,6 +572,7 @@ impl Direction {
     }
 }
 
+#[derive(Component)]
 struct SnakeHead {
     direction: Direction,
     next_direction: Direction,
@@ -580,7 +591,7 @@ impl SnakeHead {
         &mut self,
         index: Option<usize>,
         commands: &mut Commands,
-        materials: &mut Assets<ColorMaterial>,
+        _materials: &mut Assets<ColorMaterial>,
         grid_position: GridPosition,
         windows: &mut Windows,
         config: &Config,
@@ -594,12 +605,14 @@ impl SnakeHead {
             },
             commands
                 .spawn_bundle(SpriteBundle {
-                    material: materials
-                        .add(Color::hex(&theme.snake).unwrap_or(MISSING_COLOR).into()),
-                    sprite: Sprite::new(Vec2::new(
-                        config.grid_scale as f32 * 0.75,
-                        config.grid_scale as f32 * 0.75,
-                    )),
+                    sprite: Sprite {
+                        custom_size: Some(Vec2::new(
+                            config.grid_scale as f32 * 0.75,
+                            config.grid_scale as f32 * 0.75,
+                        )),
+                        color: Color::hex(&theme.snake).unwrap_or(MISSING_COLOR),
+                        ..Default::default()
+                    },
                     transform: Transform::from_translation(grid_to_vector(
                         &grid_position,
                         dimensions,
@@ -679,8 +692,10 @@ impl SnakeHead {
     }
 }
 
+#[derive(Component)]
 struct SnakeSegment;
 
+#[derive(Component)]
 struct Despawning {
     despawn_time: f64,
     animation_delay: f64,
@@ -699,9 +714,11 @@ impl Despawning {
     }
 }
 
+#[derive(Component)]
 struct Food;
 
 #[derive(Default, Clone)]
+#[derive(Component)]
 struct GridPosition {
     x: u32,
     y: u32,
