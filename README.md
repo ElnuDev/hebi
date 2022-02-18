@@ -8,7 +8,7 @@
 </h1>
 <h4 align="center">A highly customizable snake clone made in Rust with the <a href="https://github.com/bevyengine/bevy">Bevy engine</a>, named after the Japanese word for snake, <ruby>蛇<rp>(</rp><rt>へび</rt><rp>)</rp></ruby>.</h4>
 
-## Configuration <a name="configuration"></a>
+## Configuration
 
 One of the things that sets apart Hebi from other snake clones is its rich configuration options. You can configure pretty much everything: the map, tick speed, food spawn rate, window scale, etc. You can even [make your own custom color themes](#Themes) in addition to those provided! Keep in mind that Hebi is still very much a work-in-progress, so the names, behavior, and functionality of configuration options may change in the future.
 
@@ -140,45 +140,47 @@ If you want to create a custom map generation type, a good starting point would 
 
 ## Building from source
 
-If you've taken interest in the project and would like to work on it or build your 🐍 from source, follow through these steps to get it up and running on your machine.
+Do you like what you see? Or maybe, you'd like to contribute to the project?
 
-If you don't have Rust installed already, see [the installation guide on Rust's official website](https://www.rust-lang.org/tools/install) and then come back when you're done.
+If you answered "Yes", then follow through these steps to get the game up and running, built right from source. 
+
+If you don't have Rust installed already, see [the installation guide on Rust's official website](https://www.rust-lang.org/tools/install) and then come back once you're done.
 
 Before we get to work, please note that Hebi uses some nightly Rust features ([`strip`](https://github.com/johnthagen/min-sized-rust#strip-symbols-from-binary), which is one of the features used to create smaller binary sizes), that haven't been introduced to the stable channel. If you want to build Hebi without nightly Rust, remove or comment out the lines `cargo-features = ["strip"]` from the top and `strip = true` under `[profile.release]` in `Cargo.toml`.
 
-1. Default to Rust nightly. If it's not already installed, `rustup` will take care of installation for you
+1. Don't mind installing the channel? Then, let's default to it. If it's not already installed, then `rustup` will take care of that for you:
 
 ```bash
 rustup default nightly
 ```
 
-2. Clone the repository
+2. Now, clone the repository:
 
 ```bash
 git clone https://github.com/ElnuDev/hebi.git
 ```
 
-3. Jump inside the newly cloned repository
+3. Great, let's jump inside the directory:
 
 ```bash
 cd hebi
 ```
 
-4. Build it
+4. Okay, let's proceed by building the game; you know, turning that _code_ into an _executable_.
 
-If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time:
+- If you plan on contributing towards Hebi, we recommend building without the `--release` flag to cut down on compilation time:
 
 ```bash
 cargo build
 ```
 
-If you're ready to take your snake game to the next level and want the best experience:
+- If you're ready to take your Snake game to the next level and want the best experience, then `--release` is your friend:
 
 ```bash
 cargo build --release
 ```
 
-5. You might want to [configure the game](#configuration) now that you've built it yourself!
+5.  Now that you've built it yourself, you might want to [configure Hebi](#configuration).
 
 ### [Compressing with `upx`](https://github.com/johnthagen/min-sized-rust#compress-the-binary)
 
